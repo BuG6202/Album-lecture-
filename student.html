@@ -244,26 +244,16 @@
   .word-card {
     display: inline-flex;
     align-items: center;
-    padding: 8px 16px;
     border-radius: 40px;
     font-weight: 800;
-    font-size: 16px;
-    cursor: grab;
+    font-size: 17px;
+    cursor: pointer;
     user-select: none;
-    transition: all 0.2s;
     border: none;
-    touch-action: none;
-    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    -webkit-tap-highlight-color: transparent;
+    transition: transform 0.1s;
   }
-  .word-card:active { cursor: grabbing; transform: scale(1.05) rotate(2deg); opacity: 0.8; }
-  .word-card.dragging { opacity: 0.4; }
-  .word-card.placed { cursor: grab; }
-
-  .word-card[data-pos="nom"]   { background: var(--nom);   color: white; }
-  .word-card[data-pos="verbe"] { background: var(--verbe); color: white; }
-  .word-card[data-pos="adj"]   { background: var(--adj);   color: white; }
-  .word-card[data-pos="det"]   { background: var(--det);   color: #1a1a1a; }
-  .word-card[data-pos="autre"] { background: var(--autre);  color: white; }
+  .word-card:active { transform: scale(0.93); }
 
   /* Legend */
   .legend {
@@ -622,29 +612,30 @@ Voici le texte d'une page d'album illustré :
 ${text}
 """
 
-Ta mission : choisir OU composer UNE phrase simple pour cet exercice de remise en ordre.
-Règles STRICTES :
-- MAXIMUM 8 mots (compte bien chaque mot séparément)
-- MINIMUM 4 mots
-- La phrase doit contenir : au moins 1 verbe conjugué + 1 nom
-- Vocabulaire courant niveau CP
-- Tu peux prendre une phrase directement dans le texte si elle respecte la limite, ou en composer une courte inspirée du texte
-- Pas d'obligation de tout résumer, l'essentiel est que la phrase soit claire et jouable
+Ta mission : choisir OU composer UNE phrase pour cet exercice de remise en ordre.
+Règles STRICTES - RESPECTE-LES ABSOLUMENT :
+- ENTRE 6 ET 10 MOTS (compte chaque mot : "Le" = 1 mot, "petit" = 1 mot, etc.)
+- La phrase DOIT avoir : un SUJET (qui?) + un VERBE conjugué + un COMPLÉMENT (quoi? où?)
+- Exemple valide (7 mots) : "Le petit chat mange une grosse souris"
+- Exemple valide (6 mots) : "La fille court dans le jardin"
+- Vocabulaire simple niveau CP, mots concrets et courants
+- Tu peux t'inspirer du texte ou composer librement
 
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication, sans texte avant ou après :
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication :
 {
-  "sentence": "La phrase ici",
+  "sentence": "La phrase complète ici",
   "words": [
-    {"text": "Le", "pos": "det"},
-    {"text": "lapin", "pos": "nom"},
-    {"text": "saute", "pos": "verbe"},
-    {"text": "très", "pos": "autre"},
-    {"text": "haut", "pos": "adj"}
+    {"text": "La", "pos": "det"},
+    {"text": "fille", "pos": "nom"},
+    {"text": "court", "pos": "verbe"},
+    {"text": "dans", "pos": "autre"},
+    {"text": "le", "pos": "det"},
+    {"text": "jardin", "pos": "nom"}
   ]
 }
 
 Valeurs possibles pour pos : "nom", "verbe", "adj", "det", "autre"
-Chaque mot séparé par une espace = un élément dans words, dans le même ordre que la phrase.`;
+IMPORTANT : chaque mot de la phrase = un objet dans words, dans le même ordre.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -752,8 +743,40 @@ function renderWordBank() {
   attachCardListeners();
 }
 
+const POS_COLORS = {
+  nom:   {bg:'#3B82F6', color:'white'},
+  verbe: {bg:'#EF4444', color:'white'},
+  adj:   {bg:'#10B981', color:'white'},
+  det:   {bg:'#F59E0B', color:'#1a1a1a'},
+  autre: {bg:'#8B5CF6', color:'white'},
+};
+
 function makeCardHTML(w, zone, idx) {
-  return `<div class="word-card" data-pos="${w.pos}" data-zone="${zone}" data-idx="${idx}" draggable="true">${w.text}</div>`;
+  const c = POS_COLORS[w.pos] || POS_COLORS.autre;
+  return `<div class="word-card" data-pos="${w.pos}" data-zone="${zone}" data-idx="${idx}"
+    style="background:${c.bg};color:${c.color};padding:10px 18px;border-radius:40px;font-weight:800;font-size:17px;cursor:pointer;user-select:none;display:inline-flex;align-items:center;box-shadow:0 4px 10px rgba(0,0,0,0.25);border:none;font-family:Nunito,sans-serif;transition:transform 0.1s;-webkit-tap-highlight-color:transparent;"
+    onclick="handleCardTap(this)">${w.text}</div>`;
+}
+
+// ── Tap to place ──────────────────────────────────────────────────────────
+function handleCardTap(card) {
+  if (answered) return;
+  const zone = card.dataset.zone;
+  const idx = parseInt(card.dataset.idx);
+  let word;
+  if (zone === 'bank') {
+    word = bankWords[idx];
+    if (!word) return;
+    bankWords.splice(idx, 1);
+    answerWords.push(word);
+  } else {
+    word = answerWords[idx];
+    if (!word) return;
+    answerWords.splice(idx, 1);
+    bankWords.push(word);
+  }
+  renderAnswerZone();
+  renderWordBank();
 }
 
 // ── Drag and Drop (mouse + touch) ─────────────────────────────────────────
