@@ -525,7 +525,7 @@ function compressImage(dataUrl, maxWidth){
 
 async function extractFromActive(segIdx){
   if(activeSegIdx!==segIdx||activePhotoIdx===null){
-    document.getElementById('extractStatus'+segIdx).innerHTML='<div class="alert alert-info">👆 Clique d'abord sur une photo pour la sélectionner.</div>';
+    document.getElementById('extractStatus'+segIdx).innerHTML='<div class="alert alert-info">👆 Clique d\'abord sur une photo pour la s\u00e9lectionner.</div>';
     return;
   }
   if(!state.apiKey){ document.getElementById('extractStatus'+segIdx).innerHTML='<div class="alert alert-error">❌ Saisis ta clé API en haut.</div>'; return; }
