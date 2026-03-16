@@ -112,11 +112,11 @@
   <div class="api-section">
     <div class="label" style="color:var(--purple)">🔑 Clé API Claude</div>
     <p style="font-size:12px;color:var(--purple);margin-bottom:10px">Nécessaire pour l'extraction automatique. <a href="https://console.anthropic.com" target="_blank" style="color:var(--purple)">Obtenir →</a></p>
-    <div class="row">
-      <input type="text" id="apiKey" placeholder="sk-ant-..." style="flex:1" spellcheck="false"/>
-      <button class="btn btn-purple" id="saveApiKeyBtn">💾 Sauvegarder</button>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input type="text" id="apiKey" placeholder="sk-ant-api03-..." style="flex:1;min-width:200px;padding:12px 16px;border-radius:12px;border:2px solid #c9b8e8;font-family:monospace;font-size:13px;outline:none;" spellcheck="false" autocorrect="off" autocapitalize="off"/>
+      <button style="padding:10px 20px;border-radius:40px;border:none;background:#7B5EA7;color:white;font-family:Nunito,sans-serif;font-weight:700;font-size:14px;cursor:pointer;-webkit-appearance:none;" id="saveApiKeyBtn" type="button">💾 Sauvegarder</button>
     </div>
-    <div id="apiStatus" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+    <div id="apiStatus" style="margin-top:8px;font-size:12px;color:#888"></div>
   </div>
 
   <!-- Steps -->
@@ -612,15 +612,23 @@ function exportAll(){
 
 // ── Init ───────────────────────────────────────────────────────────────────
 load(); renderBookList();
-document.addEventListener('DOMContentLoaded', function() {
+
+// Bind save button - multiple approaches for iOS Safari compatibility
+function bindSaveBtn() {
   var btn = document.getElementById('saveApiKeyBtn');
-  if (btn) btn.addEventListener('click', saveApiKey);
-});
-// Also attach immediately in case DOMContentLoaded already fired
-setTimeout(function() {
-  var btn = document.getElementById('saveApiKeyBtn');
-  if (btn) btn.addEventListener('click', saveApiKey);
-}, 100);
+  if (!btn) return;
+  btn.onclick = null;
+  btn.addEventListener('touchend', function(e) {
+    e.preventDefault();
+    saveApiKey();
+  });
+  btn.addEventListener('click', function(e) {
+    e.preventDefault();
+    saveApiKey();
+  });
+}
+bindSaveBtn();
+document.addEventListener('DOMContentLoaded', bindSaveBtn);
 </script>
 </body>
 </html>
