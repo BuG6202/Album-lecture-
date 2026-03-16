@@ -614,10 +614,11 @@ ${text}
 
 Ta mission : choisir OU composer UNE phrase pour cet exercice de remise en ordre.
 Règles STRICTES - RESPECTE-LES ABSOLUMENT :
-- ENTRE 6 ET 10 MOTS (compte chaque mot : "Le" = 1 mot, "petit" = 1 mot, etc.)
+- ENTRE 6 ET 8 MOTS exactement (compte chaque mot : "Le" = 1 mot, "petit" = 1 mot, etc.)
 - La phrase DOIT avoir : un SUJET (qui?) + un VERBE conjugué + un COMPLÉMENT (quoi? où?)
-- Exemple valide (7 mots) : "Le petit chat mange une grosse souris"
+- Exemple valide (7 mots) : "Le petit chat mange une grosse carotte"
 - Exemple valide (6 mots) : "La fille court dans le jardin"
+- Exemple invalide (9 mots) : trop long, recommence
 - Vocabulaire simple niveau CP, mots concrets et courants
 - Tu peux t'inspirer du texte ou composer librement
 
@@ -758,7 +759,7 @@ function makeCardHTML(w, zone, idx) {
     onclick="handleCardTap(this)">${w.text}</div>`;
 }
 
-// ── Tap to place ──────────────────────────────────────────────────────────
+// ── Tap to place (click = append to end) ─────────────────────────────────
 function handleCardTap(card) {
   if (answered) return;
   const zone = card.dataset.zone;
@@ -779,110 +780,180 @@ function handleCardTap(card) {
   renderWordBank();
 }
 
-// ── Drag and Drop (mouse + touch) ─────────────────────────────────────────
-let draggedCard = null;
-let dragZone = null;
-let dragIdx = null;
+// ── Drag to insert at position ─────────────────────────────────────────────
+let dragWord = null;
+let dragFromZone = null;
+let dragFromIdx = null;
 let touchClone = null;
+let isDragging = false;
+let dragThreshold = false;
+let touchStartX = 0;
+let touchStartY = 0;
 
 function attachCardListeners() {
   document.querySelectorAll('.word-card').forEach(card => {
-    card.addEventListener('dragstart', onDragStart);
-    card.addEventListener('dragend', onDragEnd);
-    card.addEventListener('touchstart', onTouchStart, { passive: false });
-    card.addEventListener('touchmove', onTouchMove, { passive: false });
-    card.addEventListener('touchend', onTouchEnd, { passive: false });
+    // Mouse drag
+    card.addEventListener('dragstart', e => {
+      dragFromZone = card.dataset.zone;
+      dragFromIdx = parseInt(card.dataset.idx);
+      dragWord = dragFromZone === 'bank' ? bankWords[dragFromIdx] : answerWords[dragFromIdx];
+      setTimeout(() => card.style.opacity = '0.4', 0);
+      isDragging = true;
+    });
+    card.addEventListener('dragend', () => {
+      card.style.opacity = '';
+      isDragging = false;
+      dragWord = null;
+    });
+
+    // Touch: distinguish tap vs drag
+    card.addEventListener('touchstart', e => {
+      const t = e.touches[0];
+      touchStartX = t.clientX;
+      touchStartY = t.clientY;
+      dragThreshold = false;
+      dragFromZone = card.dataset.zone;
+      dragFromIdx = parseInt(card.dataset.idx);
+      dragWord = dragFromZone === 'bank' ? bankWords[dragFromIdx] : answerWords[dragFromIdx];
+    }, { passive: true });
+
+    card.addEventListener('touchmove', e => {
+      const t = e.touches[0];
+      const dx = Math.abs(t.clientX - touchStartX);
+      const dy = Math.abs(t.clientY - touchStartY);
+      if (!dragThreshold && (dx > 8 || dy > 8)) {
+        // User is dragging, not tapping
+        dragThreshold = true;
+        // Create visual clone
+        if (!touchClone) {
+          const r = card.getBoundingClientRect();
+          touchClone = card.cloneNode(true);
+          touchClone.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;opacity:0.9;pointer-events:none;z-index:9999;transition:none`;
+          document.body.appendChild(touchClone);
+          card.style.opacity = '0.3';
+        }
+      }
+      if (dragThreshold && touchClone) {
+        e.preventDefault();
+        touchClone.style.left = (t.clientX - touchClone.offsetWidth / 2) + 'px';
+        touchClone.style.top  = (t.clientY - touchClone.offsetHeight / 2) + 'px';
+      }
+    }, { passive: false });
+
+    card.addEventListener('touchend', e => {
+      card.style.opacity = '';
+      if (!dragThreshold) {
+        // It was a tap
+        if (touchClone) { touchClone.remove(); touchClone = null; }
+        handleCardTap(card);
+        return;
+      }
+      // It was a drag - find drop target
+      if (touchClone) { touchClone.remove(); touchClone = null; }
+      const t = e.changedTouches[0];
+      handleTouchDrop(t.clientX, t.clientY);
+      dragWord = null;
+      dragThreshold = false;
+    }, { passive: true });
   });
 
-  document.getElementById('answerZone').addEventListener('dragover', e => { e.preventDefault(); document.getElementById('answerZone').classList.add('drag-over'); });
-  document.getElementById('answerZone').addEventListener('dragleave', () => document.getElementById('answerZone').classList.remove('drag-over'));
-  document.getElementById('answerZone').addEventListener('drop', e => { e.preventDefault(); document.getElementById('answerZone').classList.remove('drag-over'); dropTo('answer'); });
+  // Mouse drop targets
+  const answerEl = document.getElementById('answerZone');
+  answerEl.addEventListener('dragover', e => {
+    e.preventDefault();
+    answerEl.classList.add('drag-over');
+    const insertIdx = getDragInsertIdx(e.clientX);
+    showDropIndicator(insertIdx);
+  });
+  answerEl.addEventListener('dragleave', () => {
+    answerEl.classList.remove('drag-over');
+    removeDropIndicator();
+  });
+  answerEl.addEventListener('drop', e => {
+    e.preventDefault();
+    answerEl.classList.remove('drag-over');
+    removeDropIndicator();
+    if (!dragWord) return;
+    const insertIdx = getDragInsertIdx(e.clientX);
+    dropWordAt(insertIdx);
+  });
 
-  document.getElementById('wordBank').addEventListener('dragover', e => { e.preventDefault(); });
-  document.getElementById('wordBank').addEventListener('drop', e => { e.preventDefault(); dropTo('bank'); });
+  document.getElementById('wordBank').addEventListener('dragover', e => e.preventDefault());
+  document.getElementById('wordBank').addEventListener('drop', e => {
+    e.preventDefault();
+    if (!dragWord || dragFromZone !== 'answer') return;
+    answerWords.splice(dragFromIdx, 1);
+    bankWords.push(dragWord);
+    dragWord = null;
+    renderAnswerZone();
+    renderWordBank();
+  });
 }
 
-function onDragStart(e) {
-  draggedCard = e.currentTarget;
-  dragZone = draggedCard.dataset.zone;
-  dragIdx = parseInt(draggedCard.dataset.idx);
-  setTimeout(() => draggedCard.classList.add('dragging'), 0);
-}
-function onDragEnd() { if (draggedCard) { draggedCard.classList.remove('dragging'); draggedCard = null; } }
-
-function dropTo(targetZone) {
-  if (!draggedCard) return;
-  const word = dragZone === 'bank' ? bankWords[dragIdx] : answerWords[dragIdx];
-  if (!word) return;
-
-  if (dragZone === 'bank' && targetZone === 'answer') {
-    bankWords.splice(dragIdx, 1);
-    answerWords.push(word);
-  } else if (dragZone === 'answer' && targetZone === 'bank') {
-    answerWords.splice(dragIdx, 1);
-    bankWords.push(word);
+function getDragInsertIdx(clientX) {
+  const cards = document.querySelectorAll('#answerZone .word-card');
+  for (let i = 0; i < cards.length; i++) {
+    const r = cards[i].getBoundingClientRect();
+    if (clientX < r.left + r.width / 2) return i;
   }
+  return answerWords.length;
+}
+
+function showDropIndicator(idx) {
+  removeDropIndicator();
+  const cards = document.querySelectorAll('#answerZone .word-card');
+  const indicator = document.createElement('div');
+  indicator.id = 'dropIndicator';
+  indicator.style.cssText = 'width:3px;min-height:36px;background:var(--teal);border-radius:2px;flex-shrink:0;';
+  const zone = document.getElementById('answerZone');
+  if (idx < cards.length) {
+    zone.insertBefore(indicator, cards[idx]);
+  } else {
+    zone.appendChild(indicator);
+  }
+}
+
+function removeDropIndicator() {
+  const el = document.getElementById('dropIndicator');
+  if (el) el.remove();
+}
+
+function dropWordAt(insertIdx) {
+  if (!dragWord) return;
+  // Remove from source
+  if (dragFromZone === 'bank') {
+    bankWords.splice(dragFromIdx, 1);
+  } else {
+    answerWords.splice(dragFromIdx, 1);
+    if (dragFromIdx < insertIdx) insertIdx--;
+  }
+  answerWords.splice(insertIdx, 0, dragWord);
+  dragWord = null;
   renderAnswerZone();
   renderWordBank();
-  draggedCard = null;
 }
 
-// Touch drag
-let touchWord = null, touchZone = null, touchIdx2 = null;
-
-function onTouchStart(e) {
-  e.preventDefault();
-  const card = e.currentTarget;
-  touchZone = card.dataset.zone;
-  touchIdx2 = parseInt(card.dataset.idx);
-  touchWord = touchZone === 'bank' ? bankWords[touchIdx2] : answerWords[touchIdx2];
-
-  const r = card.getBoundingClientRect();
-  touchClone = card.cloneNode(true);
-  touchClone.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;opacity:0.9;pointer-events:none;z-index:9999;transition:none`;
-  document.body.appendChild(touchClone);
-  card.style.opacity = '0.3';
-}
-
-function onTouchMove(e) {
-  e.preventDefault();
-  if (!touchClone) return;
-  const t = e.touches[0];
-  touchClone.style.left = (t.clientX - touchClone.offsetWidth / 2) + 'px';
-  touchClone.style.top  = (t.clientY - touchClone.offsetHeight / 2) + 'px';
-}
-
-function onTouchEnd(e) {
-  e.preventDefault();
-  if (!touchClone || !touchWord) return;
-  const t = e.changedTouches[0];
-
+function handleTouchDrop(clientX, clientY) {
+  if (!dragWord) return;
   const answerEl = document.getElementById('answerZone');
   const bankEl = document.getElementById('wordBank');
   const ar = answerEl.getBoundingClientRect();
   const br = bankEl.getBoundingClientRect();
 
-  let targetZone = null;
-  if (t.clientX >= ar.left && t.clientX <= ar.right && t.clientY >= ar.top && t.clientY <= ar.bottom) targetZone = 'answer';
-  if (t.clientX >= br.left && t.clientX <= br.right && t.clientY >= br.top && t.clientY <= br.bottom) targetZone = 'bank';
-
-  touchClone.remove();
-  touchClone = null;
-
-  if (targetZone && targetZone !== touchZone) {
-    if (touchZone === 'bank' && targetZone === 'answer') {
-      bankWords.splice(touchIdx2, 1);
-      answerWords.push(touchWord);
-    } else if (touchZone === 'answer' && targetZone === 'bank') {
-      answerWords.splice(touchIdx2, 1);
-      bankWords.push(touchWord);
+  if (clientX >= ar.left && clientX <= ar.right && clientY >= ar.top && clientY <= ar.bottom) {
+    // Drop into answer zone at position
+    const insertIdx = getDragInsertIdx(clientX);
+    dropWordAt(insertIdx);
+  } else if (clientX >= br.left && clientX <= br.right && clientY >= br.top && clientY <= br.bottom) {
+    // Drop back to bank
+    if (dragFromZone === 'answer') {
+      answerWords.splice(dragFromIdx, 1);
+      bankWords.push(dragWord);
+      dragWord = null;
+      renderAnswerZone();
+      renderWordBank();
     }
-    renderAnswerZone();
-    renderWordBank();
-  } else {
-    document.querySelectorAll('.word-card').forEach(c => c.style.opacity = '');
   }
-  touchWord = null;
 }
 
 // ── Check answer ───────────────────────────────────────────────────────────
