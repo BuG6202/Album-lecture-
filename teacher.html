@@ -561,12 +561,31 @@ function cropSelection(segIdx){
   if(!selection||!activeImg) return;
   const scale=activeImg.width/activeCanvas.width;
   const off=document.createElement('canvas');
-  off.width=selection.w*scale; off.height=selection.h*scale;
-  off.getContext('2d').drawImage(activeImg,selection.x*scale,selection.y*scale,selection.w*scale,selection.h*scale,0,0,off.width,off.height);
-  const dataUrl=off.toDataURL('image/png');
+  // Compress crop to max 600px wide and JPEG to keep size small
+  const cropW=selection.w*scale, cropH=selection.h*scale;
+  const maxW=600;
+  const s2=Math.min(1,maxW/cropW);
+  off.width=cropW*s2; off.height=cropH*s2;
+  off.getContext('2d').drawImage(activeImg,selection.x*scale,selection.y*scale,cropW,cropH,0,0,off.width,off.height);
+  const dataUrl=off.toDataURL('image/jpeg',0.75);
   const book=state.books[state.currentBookId];
   book.segments[segIdx].crops.push(dataUrl);
-  save(); refreshSegBody(segIdx); clearSel(segIdx);
+  // Auto-delete the source photo from memory and from segment after cropping
+  if(activePhotoIdx!==null){
+    const bookId=state.currentBookId;
+    const total=book.segments[segIdx].photos.length;
+    delete photoMemory[memKey(bookId,segIdx,activePhotoIdx)];
+    for(let i=activePhotoIdx+1;i<total;i++){
+      const d=photoMemory[memKey(bookId,segIdx,i)];
+      if(d) photoMemory[memKey(bookId,segIdx,i-1)]=d;
+      delete photoMemory[memKey(bookId,segIdx,i)];
+    }
+    book.segments[segIdx].photos.splice(activePhotoIdx,1);
+    activePhotoIdx=null; activeSegIdx=null;
+    activeImg=null; activeCanvas=null; activeCtx=null;
+    selection=null;
+  }
+  save(); refreshSegBody(segIdx);
 }
 
 function deleteCrop(segIdx, cropIdx){
