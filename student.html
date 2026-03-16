@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>🎮 Jeu de Lecture — CP</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #1a1a2e;
+    --surface: #16213e;
+    --card: #0f3460;
+    --cream: #FFF8F0;
+    --warm: #FF6B35;
+    --teal: #2EC4B6;
+    --gold: #FFB800;
+    --green: #4ADE80;
+    --purple: #a855f7;
+    --pink: #ec4899;
+    --text: #ffffff;
+    --muted: rgba(255,255,255,0.5);
+
+    /* Word card colors by part of speech */
+    --nom: #3B82F6;        /* bleu — noms */
+    --verbe: #EF4444;      /* rouge — verbes */
+    --adj: #10B981;        /* vert — adjectifs */
+    --det: #F59E0B;        /* ambre — déterminants */
+    --autre: #8B5CF6;      /* violet — autres */
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Stars bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: radial-gradient(1px 1px at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
+                      radial-gradient(1px 1px at 60% 70%, rgba(255,255,255,0.2) 0%, transparent 100%),
+                      radial-gradient(1px 1px at 80% 20%, rgba(255,255,255,0.15) 0%, transparent 100%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrap { position: relative; z-index: 1; }
+
+  /* Screens */
+  .screen { display: none; min-height: 100vh; }
+  .screen.active { display: flex; flex-direction: column; }
+
+  /* ── WELCOME SCREEN ── */
+  #welcomeScreen {
+    align-items: center;
+    justify-content: center;
+    padding: 32px 20px;
+    text-align: center;
+  }
+
+  .big-logo { font-size: 80px; margin-bottom: 16px; animation: bounce 2s infinite; }
+  @keyframes bounce { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
+
+  .welcome-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 36px;
+    color: var(--gold);
+    margin-bottom: 8px;
+    text-shadow: 0 0 30px rgba(255,184,0,0.4);
+  }
+
+  .welcome-sub { font-size: 16px; color: var(--muted); margin-bottom: 40px; }
+
+  .upload-box {
+    background: var(--surface);
+    border: 3px dashed rgba(255,255,255,0.2);
+    border-radius: 20px;
+    padding: 36px 28px;
+    cursor: pointer;
+    transition: all 0.3s;
+    width: 100%;
+    max-width: 360px;
+    margin-bottom: 20px;
+  }
+  .upload-box:hover { border-color: var(--teal); background: rgba(46,196,182,0.1); }
+  .upload-box .icon { font-size: 40px; margin-bottom: 10px; }
+  .upload-box .text { font-size: 16px; font-weight: 700; }
+  .upload-box .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* ── BOOK SELECT ── */
+  #bookSelectScreen { padding: 24px 16px; }
+
+  .screen-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+  }
+
+  .screen-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 24px;
+    color: var(--gold);
+  }
+
+  .books-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 16px;
+  }
+
+  .book-card {
+    background: var(--surface);
+    border-radius: 16px;
+    padding: 20px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    border: 2px solid transparent;
+  }
+  .book-card:hover { border-color: var(--teal); transform: translateY(-4px); box-shadow: 0 12px 30px rgba(0,0,0,0.3); }
+
+  .book-card .icon { font-size: 48px; margin-bottom: 10px; }
+  .book-card .name { font-weight: 800; font-size: 14px; }
+  .book-card .count { font-size: 11px; color: var(--muted); margin-top: 4px; }
+
+  /* ── GAME SCREEN ── */
+  #gameScreen { padding: 0; }
+
+  .game-header {
+    background: var(--surface);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(255,255,255,0.1);
+  }
+
+  .game-book-name { font-size: 14px; font-weight: 700; color: var(--gold); flex: 1; }
+  .score-badge {
+    background: var(--warm);
+    color: white;
+    padding: 4px 14px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 800;
+  }
+
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,0.1);
+    position: relative;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--teal), var(--gold));
+    transition: width 0.5s ease;
+  }
+
+  /* Illustration */
+  .illus-zone {
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    min-height: 200px;
+  }
+
+  .illus-zone img {
+    max-width: 100%;
+    max-height: 220px;
+    border-radius: 12px;
+    object-fit: contain;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.4);
+  }
+
+  .illus-placeholder {
+    font-size: 80px;
+    opacity: 0.3;
+  }
+
+  .page-num {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    padding: 6px;
+    background: var(--surface);
+  }
+
+  /* Game area */
+  .game-area {
+    flex: 1;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* Answer slots */
+  .answer-zone {
+    min-height: 64px;
+    background: rgba(255,255,255,0.05);
+    border: 2px dashed rgba(255,255,255,0.2);
+    border-radius: 14px;
+    padding: 10px 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    transition: all 0.2s;
+  }
+  .answer-zone.drag-over {
+    border-color: var(--teal);
+    background: rgba(46,196,182,0.1);
+  }
+  .answer-zone.correct { border-color: var(--green); background: rgba(74,222,128,0.1); }
+  .answer-zone.wrong { border-color: #EF4444; background: rgba(239,68,68,0.1); }
+  .answer-hint { font-size: 13px; color: var(--muted); }
+
+  /* Word cards */
+  .word-bank {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    min-height: 48px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 14px;
+  }
+
+  .word-card {
+    display: inline-flex;
+    align-items: center;
+    padding: 8px 16px;
+    border-radius: 40px;
+    font-weight: 800;
+    font-size: 16px;
+    cursor: grab;
+    user-select: none;
+    transition: all 0.2s;
+    border: none;
+    touch-action: none;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  }
+  .word-card:active { cursor: grabbing; transform: scale(1.05) rotate(2deg); opacity: 0.8; }
+  .word-card.dragging { opacity: 0.4; }
+  .word-card.placed { cursor: grab; }
+
+  .word-card[data-pos="nom"]   { background: var(--nom);   color: white; }
+  .word-card[data-pos="verbe"] { background: var(--verbe); color: white; }
+  .word-card[data-pos="adj"]   { background: var(--adj);   color: white; }
+  .word-card[data-pos="det"]   { background: var(--det);   color: #1a1a1a; }
+  .word-card[data-pos="autre"] { background: var(--autre);  color: white; }
+
+  /* Legend */
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 16px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+
+  /* Check button */
+  .check-btn {
+    margin: 0 16px 16px;
+    padding: 16px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 18px;
+    font-weight: 800;
+    cursor: pointer;
+    width: calc(100% - 32px);
+    background: linear-gradient(135deg, var(--teal), #1a9e96);
+    color: white;
+    box-shadow: 0 6px 20px rgba(46,196,182,0.4);
+    transition: all 0.2s;
+  }
+  .check-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(46,196,182,0.5); }
+  .check-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Feedback */
+  .feedback {
+    margin: 0 16px;
+    padding: 14px 18px;
+    border-radius: 14px;
+    font-size: 16px;
+    font-weight: 800;
+    text-align: center;
+    display: none;
+  }
+  .feedback.correct-fb { background: rgba(74,222,128,0.2); color: var(--green); display: block; }
+  .feedback.wrong-fb { background: rgba(239,68,68,0.15); color: #fca5a5; display: block; }
+
+  .solution-text {
+    margin: 8px 16px 0;
+    padding: 10px 16px;
+    background: rgba(255,255,255,0.05);
+    border-radius: 10px;
+    font-size: 14px;
+    color: var(--muted);
+    display: none;
+  }
+
+  /* Next btn */
+  .next-btn {
+    margin: 12px 16px 16px;
+    padding: 14px;
+    border-radius: 14px;
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    background: var(--warm);
+    color: white;
+    width: calc(100% - 32px);
+    display: none;
+    box-shadow: 0 6px 20px rgba(255,107,53,0.4);
+    transition: all 0.2s;
+  }
+  .next-btn:hover { transform: translateY(-2px); }
+
+  /* ── CELEBRATION ── */
+  #celebrationScreen {
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 32px 20px;
+  }
+
+  .confetti-icon { font-size: 80px; animation: spin 2s linear infinite; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  .celeb-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 36px;
+    color: var(--gold);
+    margin: 20px 0 8px;
+  }
+
+  .final-score {
+    font-size: 48px;
+    font-weight: 800;
+    color: var(--green);
+    margin: 16px 0;
+  }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 14px 28px;
+    border-radius: 40px;
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-size: 16px;
+    font-weight: 800;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-gold { background: var(--gold); color: #1a1a1a; }
+  .btn-gold:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(255,184,0,0.4); }
+  .btn-outline { background: transparent; color: var(--text); border: 2px solid rgba(255,255,255,0.3); }
+  .btn-outline:hover { border-color: white; }
+
+  .hidden { display: none !important; }
+
+  /* Loading overlay */
+  #loadingOverlay {
+    position: fixed;
+    inset: 0;
+    background: var(--bg);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+  }
+  #loadingOverlay.hidden { display: none; }
+  .big-spinner {
+    width: 48px; height: 48px;
+    border: 5px solid rgba(255,255,255,0.2);
+    border-top-color: var(--teal);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  .loading-text { color: var(--muted); font-size: 14px; font-weight: 700; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- Loading -->
+  <div id="loadingOverlay" class="hidden">
+    <div class="big-spinner"></div>
+    <div class="loading-text" id="loadingText">Préparation du jeu…</div>
+  </div>
+
+  <!-- WELCOME -->
+  <div class="screen active" id="welcomeScreen">
+    <div class="big-logo">📚</div>
+    <div class="welcome-title">Jeu de Lecture</div>
+    <div class="welcome-sub">Reconstitue les phrases de l'album !</div>
+
+    <div class="upload-box" onclick="document.getElementById('jsonInput').click()">
+      <div class="icon">📂</div>
+      <div class="text">Charger mon album</div>
+      <div class="hint">Clique pour choisir le fichier de ta maîtresse</div>
+      <input type="file" id="jsonInput" accept=".json" class="hidden" onchange="loadJSON(event)"/>
+    </div>
+
+    <div id="welcomeError" style="color:#fca5a5;font-size:13px;max-width:300px;display:none"></div>
+  </div>
+
+  <!-- BOOK SELECT -->
+  <div class="screen" id="bookSelectScreen">
+    <div style="padding:24px 16px">
+      <div class="screen-header">
+        <span style="font-size:32px">📚</span>
+        <div class="screen-title">Choisis un album</div>
+      </div>
+      <div class="books-grid" id="booksGrid"></div>
+    </div>
+  </div>
+
+  <!-- GAME -->
+  <div class="screen" id="gameScreen">
+    <div class="game-header">
+      <button class="btn btn-outline" style="padding:6px 14px;font-size:12px" onclick="backToBooks()">← Albums</button>
+      <div class="game-book-name" id="gameBookName"></div>
+      <div class="score-badge" id="scoreBadge">⭐ 0</div>
+    </div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+
+    <div class="illus-zone" id="illusZone">
+      <div class="illus-placeholder">🖼️</div>
+    </div>
+    <div class="page-num" id="pageNum"></div>
+
+    <div class="game-area">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700">REMETS LES MOTS DANS L'ORDRE :</div>
+        <div class="answer-zone" id="answerZone">
+          <span class="answer-hint">Glisse les mots ici ✨</span>
+        </div>
+      </div>
+
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:700">LES MOTS :</div>
+        <div class="word-bank" id="wordBank"></div>
+      </div>
+
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--nom)"></div>nom</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--verbe)"></div>verbe</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--adj)"></div>adjectif</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--det)"></div>déterminant</div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--autre)"></div>autre</div>
+      </div>
+    </div>
+
+    <div class="feedback" id="feedback"></div>
+    <div class="solution-text" id="solutionText"></div>
+    <button class="check-btn" id="checkBtn" onclick="checkAnswer()">✅ Vérifier</button>
+    <button class="next-btn" id="nextBtn" onclick="nextPage()">Page suivante →</button>
+  </div>
+
+  <!-- CELEBRATION -->
+  <div class="screen" id="celebrationScreen">
+    <div class="confetti-icon">🎉</div>
+    <div class="celeb-title">Bravo !</div>
+    <div id="celebText" style="font-size:16px;color:var(--muted);margin-bottom:8px">Tu as fini l'album !</div>
+    <div class="final-score" id="finalScore"></div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-top:16px">
+      <button class="btn btn-gold" onclick="replayBook()">🔄 Rejouer</button>
+      <button class="btn btn-outline" onclick="backToBooks()">📚 Autres albums</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── Config ─────────────────────────────────────────────────────────────────
+const CLAUDE_API_KEY_STORAGE = 'claudeApiKey';
+
+// ── State ──────────────────────────────────────────────────────────────────
+let books = {};
+let currentBookId = null;
+let currentPageIdx = 0;
+let pages = [];       // pages of current book
+let gameSentences = []; // [{sentence, words:[{text,pos}]}]
+let answerWords = [];  // words placed in answer zone
+let bankWords = [];    // words remaining in bank
+let score = 0;
+let answered = false;
+let apiKey = '';
+
+// ── Load JSON ──────────────────────────────────────────────────────────────
+function loadJSON(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      books = JSON.parse(ev.target.result);
+      showScreen('bookSelectScreen');
+      renderBooks();
+    } catch(err) {
+      showError('Fichier invalide. Demande le bon fichier à ta maîtresse.');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+function showError(msg) {
+  const el = document.getElementById('welcomeError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+// ── Screens ────────────────────────────────────────────────────────────────
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ── Books ──────────────────────────────────────────────────────────────────
+function renderBooks() {
+  const grid = document.getElementById('booksGrid');
+  const ids = Object.keys(books);
+  grid.innerHTML = ids.map(id => {
+    const b = books[id];
+    const n = b.pages ? b.pages.length : 0;
+    return `<div class="book-card" onclick="startBook('${id}')">
+      <div class="icon">📖</div>
+      <div class="name">${b.name}</div>
+      <div class="count">${n} page${n>1?'s':''}</div>
+    </div>`;
+  }).join('');
+}
+
+function backToBooks() { showScreen('bookSelectScreen'); }
+
+// ── Start book ─────────────────────────────────────────────────────────────
+async function startBook(id) {
+  currentBookId = id;
+  const book = books[id];
+  pages = book.pages || [];
+  if (!pages.length) { alert('Cet album n\'a pas encore de pages.'); return; }
+
+  score = 0;
+  currentPageIdx = 0;
+  document.getElementById('gameBookName').textContent = book.name;
+  document.getElementById('scoreBadge').textContent = '⭐ 0';
+
+  // Get API key
+  apiKey = localStorage.getItem(CLAUDE_API_KEY_STORAGE) || '';
+
+  showScreen('gameScreen');
+  await prepareGameSentences();
+  loadGamePage(0);
+}
+
+// ── Prepare sentences via Claude ───────────────────────────────────────────
+async function prepareGameSentences() {
+  showLoading('Préparation des phrases…');
+  gameSentences = [];
+
+  for (let i = 0; i < pages.length; i++) {
+    setLoadingText(`Page ${i+1} sur ${pages.length}…`);
+    const text = pages[i].text || '';
+    if (!text.trim()) {
+      gameSentences.push(null);
+      continue;
+    }
+    try {
+      const result = await extractSentence(text);
+      gameSentences.push(result);
+    } catch(e) {
+      // fallback: use first sentence, simple split
+      const fallback = makeFallbackSentence(text);
+      gameSentences.push(fallback);
+    }
+  }
+  hideLoading();
+}
+
+async function extractSentence(text) {
+  if (!apiKey) return makeFallbackSentence(text);
+
+  const prompt = `Tu es un assistant pédagogique pour CP (6-7 ans, A1 français). 
+Voici le texte d'une page d'album illustré : "${text}"
+
+Choisis UNE phrase courte et claire (max 8 mots) adaptée à des élèves de CP.
+Préfère les phrases avec des mots courants, un verbe d'action, et un nom concret.
+
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication :
+{
+  "sentence": "La phrase choisie",
+  "words": [
+    {"text": "La", "pos": "det"},
+    {"text": "petite", "pos": "adj"},
+    {"text": "fille", "pos": "nom"},
+    {"text": "mange", "pos": "verbe"},
+    {"text": "une", "pos": "det"},
+    {"text": "pomme", "pos": "nom"}
+  ]
+}
+
+Catégories pos : nom, verbe, adj, det, autre`;
+
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    body: JSON.stringify({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 400,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+
+  const data = await res.json();
+  if (data.error) throw new Error(data.error.message);
+  const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
+  return JSON.parse(raw);
+}
+
+function makeFallbackSentence(text) {
+  // Take first sentence, split into words, tag as 'autre'
+  const sentence = text.split(/[.!?]/)[0].trim();
+  const words = sentence.split(/\s+/).filter(Boolean).map(w => ({ text: w, pos: 'autre' }));
+  return { sentence, words };
+}
+
+// ── Load game page ─────────────────────────────────────────────────────────
+function loadGamePage(idx) {
+  currentPageIdx = idx;
+  answered = false;
+  const page = pages[idx];
+  const total = pages.length;
+
+  // Progress
+  document.getElementById('progressFill').style.width = ((idx / total) * 100) + '%';
+  document.getElementById('pageNum').textContent = `Page ${idx + 1} sur ${total}`;
+
+  // Illustration
+  const illusZone = document.getElementById('illusZone');
+  const crops = page.crops || [];
+  if (crops.length > 0) {
+    illusZone.innerHTML = `<img src="${crops[0]}" alt="Illustration page ${idx+1}"/>`;
+  } else if (page.imageData) {
+    illusZone.innerHTML = `<img src="${page.imageData}" alt="Page ${idx+1}"/>`;
+  } else {
+    illusZone.innerHTML = '<div class="illus-placeholder">🖼️</div>';
+  }
+
+  // Reset UI
+  document.getElementById('feedback').className = 'feedback';
+  document.getElementById('feedback').textContent = '';
+  document.getElementById('solutionText').style.display = 'none';
+  document.getElementById('checkBtn').style.display = 'block';
+  document.getElementById('checkBtn').disabled = false;
+  document.getElementById('nextBtn').style.display = 'none';
+  document.getElementById('answerZone').className = 'answer-zone';
+
+  // Build word cards
+  const gameData = gameSentences[idx];
+  if (!gameData) {
+    document.getElementById('wordBank').innerHTML = '<span style="color:var(--muted);font-size:13px">Aucun texte pour cette page.</span>';
+    document.getElementById('answerZone').innerHTML = '<span class="answer-hint">—</span>';
+    document.getElementById('checkBtn').disabled = true;
+    document.getElementById('nextBtn').style.display = 'block';
+    document.getElementById('nextBtn').textContent = idx < total - 1 ? 'Page suivante →' : '🎉 Terminer';
+    return;
+  }
+
+  answerWords = [];
+  bankWords = shuffle([...gameData.words]);
+
+  renderAnswerZone();
+  renderWordBank();
+}
+
+// ── Render cards ───────────────────────────────────────────────────────────
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function renderAnswerZone() {
+  const zone = document.getElementById('answerZone');
+  if (!answerWords.length) {
+    zone.innerHTML = '<span class="answer-hint">Glisse les mots ici ✨</span>';
+    return;
+  }
+  zone.innerHTML = answerWords.map((w, i) => makeCardHTML(w, 'answer', i)).join('');
+  attachCardListeners();
+}
+
+function renderWordBank() {
+  const bank = document.getElementById('wordBank');
+  if (!bankWords.length) {
+    bank.innerHTML = '<span style="color:var(--muted);font-size:13px">Tous les mots sont placés ✓</span>';
+    return;
+  }
+  bank.innerHTML = bankWords.map((w, i) => makeCardHTML(w, 'bank', i)).join('');
+  attachCardListeners();
+}
+
+function makeCardHTML(w, zone, idx) {
+  return `<div class="word-card" data-pos="${w.pos}" data-zone="${zone}" data-idx="${idx}" draggable="true">${w.text}</div>`;
+}
+
+// ── Drag and Drop (mouse + touch) ─────────────────────────────────────────
+let draggedCard = null;
+let dragZone = null;
+let dragIdx = null;
+let touchClone = null;
+
+function attachCardListeners() {
+  document.querySelectorAll('.word-card').forEach(card => {
+    card.addEventListener('dragstart', onDragStart);
+    card.addEventListener('dragend', onDragEnd);
+    card.addEventListener('touchstart', onTouchStart, { passive: false });
+    card.addEventListener('touchmove', onTouchMove, { passive: false });
+    card.addEventListener('touchend', onTouchEnd, { passive: false });
+  });
+
+  document.getElementById('answerZone').addEventListener('dragover', e => { e.preventDefault(); document.getElementById('answerZone').classList.add('drag-over'); });
+  document.getElementById('answerZone').addEventListener('dragleave', () => document.getElementById('answerZone').classList.remove('drag-over'));
+  document.getElementById('answerZone').addEventListener('drop', e => { e.preventDefault(); document.getElementById('answerZone').classList.remove('drag-over'); dropTo('answer'); });
+
+  document.getElementById('wordBank').addEventListener('dragover', e => { e.preventDefault(); });
+  document.getElementById('wordBank').addEventListener('drop', e => { e.preventDefault(); dropTo('bank'); });
+}
+
+function onDragStart(e) {
+  draggedCard = e.currentTarget;
+  dragZone = draggedCard.dataset.zone;
+  dragIdx = parseInt(draggedCard.dataset.idx);
+  setTimeout(() => draggedCard.classList.add('dragging'), 0);
+}
+function onDragEnd() { if (draggedCard) { draggedCard.classList.remove('dragging'); draggedCard = null; } }
+
+function dropTo(targetZone) {
+  if (!draggedCard) return;
+  const word = dragZone === 'bank' ? bankWords[dragIdx] : answerWords[dragIdx];
+  if (!word) return;
+
+  if (dragZone === 'bank' && targetZone === 'answer') {
+    bankWords.splice(dragIdx, 1);
+    answerWords.push(word);
+  } else if (dragZone === 'answer' && targetZone === 'bank') {
+    answerWords.splice(dragIdx, 1);
+    bankWords.push(word);
+  }
+  renderAnswerZone();
+  renderWordBank();
+  draggedCard = null;
+}
+
+// Touch drag
+let touchWord = null, touchZone = null, touchIdx2 = null;
+
+function onTouchStart(e) {
+  e.preventDefault();
+  const card = e.currentTarget;
+  touchZone = card.dataset.zone;
+  touchIdx2 = parseInt(card.dataset.idx);
+  touchWord = touchZone === 'bank' ? bankWords[touchIdx2] : answerWords[touchIdx2];
+
+  const r = card.getBoundingClientRect();
+  touchClone = card.cloneNode(true);
+  touchClone.style.cssText = `position:fixed;left:${r.left}px;top:${r.top}px;width:${r.width}px;opacity:0.9;pointer-events:none;z-index:9999;transition:none`;
+  document.body.appendChild(touchClone);
+  card.style.opacity = '0.3';
+}
+
+function onTouchMove(e) {
+  e.preventDefault();
+  if (!touchClone) return;
+  const t = e.touches[0];
+  touchClone.style.left = (t.clientX - touchClone.offsetWidth / 2) + 'px';
+  touchClone.style.top  = (t.clientY - touchClone.offsetHeight / 2) + 'px';
+}
+
+function onTouchEnd(e) {
+  e.preventDefault();
+  if (!touchClone || !touchWord) return;
+  const t = e.changedTouches[0];
+
+  const answerEl = document.getElementById('answerZone');
+  const bankEl = document.getElementById('wordBank');
+  const ar = answerEl.getBoundingClientRect();
+  const br = bankEl.getBoundingClientRect();
+
+  let targetZone = null;
+  if (t.clientX >= ar.left && t.clientX <= ar.right && t.clientY >= ar.top && t.clientY <= ar.bottom) targetZone = 'answer';
+  if (t.clientX >= br.left && t.clientX <= br.right && t.clientY >= br.top && t.clientY <= br.bottom) targetZone = 'bank';
+
+  touchClone.remove();
+  touchClone = null;
+
+  if (targetZone && targetZone !== touchZone) {
+    if (touchZone === 'bank' && targetZone === 'answer') {
+      bankWords.splice(touchIdx2, 1);
+      answerWords.push(touchWord);
+    } else if (touchZone === 'answer' && targetZone === 'bank') {
+      answerWords.splice(touchIdx2, 1);
+      bankWords.push(touchWord);
+    }
+    renderAnswerZone();
+    renderWordBank();
+  } else {
+    document.querySelectorAll('.word-card').forEach(c => c.style.opacity = '');
+  }
+  touchWord = null;
+}
+
+// ── Check answer ───────────────────────────────────────────────────────────
+function checkAnswer() {
+  if (answered) return;
+  const gameData = gameSentences[currentPageIdx];
+  if (!gameData) return;
+
+  const expected = gameData.words.map(w => w.text.toLowerCase());
+  const given = answerWords.map(w => w.text.toLowerCase());
+
+  const isCorrect = JSON.stringify(expected) === JSON.stringify(given);
+  answered = true;
+
+  const fb = document.getElementById('feedback');
+  const zone = document.getElementById('answerZone');
+  const total = pages.length;
+
+  if (isCorrect) {
+    score++;
+    fb.textContent = '🌟 Bravo ! C\'est la bonne réponse !';
+    fb.className = 'feedback correct-fb';
+    zone.classList.add('correct');
+    document.getElementById('scoreBadge').textContent = `⭐ ${score}`;
+  } else {
+    fb.textContent = '💪 Pas tout à fait… Voici la bonne réponse :';
+    fb.className = 'feedback wrong-fb';
+    zone.classList.add('wrong');
+    const sol = document.getElementById('solutionText');
+    sol.textContent = '👉 ' + gameData.sentence;
+    sol.style.display = 'block';
+  }
+
+  document.getElementById('checkBtn').style.display = 'none';
+  const nextBtn = document.getElementById('nextBtn');
+  nextBtn.style.display = 'block';
+  nextBtn.textContent = currentPageIdx < total - 1 ? 'Page suivante →' : '🎉 Terminer';
+}
+
+function nextPage() {
+  const total = pages.length;
+  if (currentPageIdx < total - 1) {
+    loadGamePage(currentPageIdx + 1);
+  } else {
+    showCelebration();
+  }
+}
+
+function showCelebration() {
+  const total = pages.filter(p => gameSentences[pages.indexOf(p)]).length || pages.length;
+  document.getElementById('celebText').textContent = `Tu as terminé "${books[currentBookId].name}" !`;
+  document.getElementById('finalScore').textContent = `${score} / ${total} ⭐`;
+  document.getElementById('progressFill').style.width = '100%';
+  showScreen('celebrationScreen');
+}
+
+function replayBook() { startBook(currentBookId); }
+
+// ── Loading ────────────────────────────────────────────────────────────────
+function showLoading(msg) {
+  document.getElementById('loadingOverlay').classList.remove('hidden');
+  setLoadingText(msg);
+}
+function hideLoading() { document.getElementById('loadingOverlay').classList.add('hidden'); }
+function setLoadingText(t) { document.getElementById('loadingText').textContent = t; }
+
+// ── Init ───────────────────────────────────────────────────────────────────
+apiKey = localStorage.getItem(CLAUDE_API_KEY_STORAGE) || '';
+</script>
+</body>
+</html>

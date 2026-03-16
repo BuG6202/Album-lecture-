@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>📚 Outil Enseignant — Albums Jeunesse</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap');
+
+  :root {
+    --cream: #FFF8F0;
+    --warm: #FF6B35;
+    --warm-light: #FFE0D4;
+    --teal: #2EC4B6;
+    --teal-light: #D4F5F2;
+    --purple: #7B5EA7;
+    --purple-light: #EDE6F5;
+    --gold: #FFB800;
+    --gold-light: #FFF3CC;
+    --green: #4CAF50;
+    --green-light: #E8F5E9;
+    --text: #2D2D2D;
+    --muted: #888;
+    --border: #E8E0D8;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+    --radius: 16px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    min-height: 100vh;
+  }
+
+  header {
+    background: white;
+    border-bottom: 3px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: var(--shadow);
+  }
+
+  header h1 {
+    font-family: 'Fredoka One', cursive;
+    font-size: 22px;
+    color: var(--warm);
+    letter-spacing: 0.5px;
+  }
+
+  header .badge {
+    background: var(--warm-light);
+    color: var(--warm);
+    font-size: 11px;
+    font-weight: 800;
+    padding: 3px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+  }
+
+  .main {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  /* Steps nav */
+  .steps {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 28px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .step-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 40px;
+    border: 2px solid var(--border);
+    background: white;
+    font-family: 'Nunito', sans-serif;
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--muted);
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+  }
+
+  .step-btn.active {
+    border-color: var(--warm);
+    background: var(--warm);
+    color: white;
+  }
+
+  .step-btn.done {
+    border-color: var(--green);
+    background: var(--green-light);
+    color: var(--green);
+  }
+
+  .step-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: currentColor;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    opacity: 0.3;
+  }
+
+  .step-btn.active .step-num,
+  .step-btn.done .step-num { opacity: 1; }
+
+  /* Panel */
+  .panel {
+    background: white;
+    border-radius: var(--radius);
+    padding: 28px;
+    box-shadow: var(--shadow);
+    border: 1.5px solid var(--border);
+    margin-bottom: 20px;
+  }
+
+  .panel-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 20px;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+
+  .panel-sub {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  /* Book list */
+  .book-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+
+  .book-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    cursor: pointer;
+    transition: all 0.2s;
+    background: white;
+  }
+
+  .book-item:hover { border-color: var(--warm); background: var(--warm-light); }
+  .book-item.selected { border-color: var(--warm); background: var(--warm-light); }
+
+  .book-icon {
+    font-size: 28px;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--gold-light);
+    border-radius: 10px;
+  }
+
+  .book-meta { flex: 1; }
+  .book-name { font-weight: 800; font-size: 15px; }
+  .book-count { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  .book-actions { display: flex; gap: 8px; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 10px 20px;
+    border-radius: 40px;
+    border: none;
+    font-family: 'Nunito', sans-serif;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary { background: var(--warm); color: white; }
+  .btn-primary:hover { background: #e55a28; transform: translateY(-1px); }
+
+  .btn-teal { background: var(--teal); color: white; }
+  .btn-teal:hover { background: #28ada4; transform: translateY(-1px); }
+
+  .btn-purple { background: var(--purple); color: white; }
+  .btn-purple:hover { background: #6a4f94; transform: translateY(-1px); }
+
+  .btn-outline {
+    background: white;
+    color: var(--text);
+    border: 2px solid var(--border);
+  }
+  .btn-outline:hover { border-color: var(--warm); color: var(--warm); }
+
+  .btn-sm { padding: 6px 14px; font-size: 12px; }
+  .btn-danger { background: #ff4444; color: white; }
+
+  /* Input */
+  input[type="text"], input[type="file"] {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  input[type="text"]:focus { border-color: var(--warm); }
+
+  /* Upload zone */
+  .upload-zone {
+    border: 3px dashed var(--border);
+    border-radius: var(--radius);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--cream);
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--warm);
+    background: var(--warm-light);
+  }
+
+  .upload-icon { font-size: 48px; margin-bottom: 12px; }
+  .upload-text { font-size: 16px; font-weight: 700; color: var(--text); }
+  .upload-hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+
+  /* Page editor */
+  .page-editor {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  @media (max-width: 600px) {
+    .page-editor { grid-template-columns: 1fr; }
+  }
+
+  .canvas-wrap {
+    position: relative;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 2px solid var(--border);
+    background: #f0f0f0;
+    cursor: crosshair;
+  }
+
+  .canvas-wrap canvas {
+    display: block;
+    max-width: 100%;
+    height: auto;
+  }
+
+  .selection-overlay {
+    position: absolute;
+    border: 3px dashed var(--teal);
+    background: rgba(46,196,182,0.15);
+    pointer-events: none;
+  }
+
+  /* Text area */
+  textarea {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    font-family: 'Nunito', sans-serif;
+    font-size: 14px;
+    resize: vertical;
+    min-height: 120px;
+    outline: none;
+    transition: border 0.2s;
+  }
+
+  textarea:focus { border-color: var(--teal); }
+
+  /* Crops list */
+  .crops-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .crop-thumb {
+    position: relative;
+    width: 80px;
+    height: 80px;
+    border-radius: 10px;
+    overflow: hidden;
+    border: 2px solid var(--teal);
+  }
+
+  .crop-thumb img { width: 100%; height: 100%; object-fit: cover; }
+
+  .crop-del {
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(255,0,0,0.8);
+    color: white;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    line-height: 1;
+  }
+
+  /* Pages list */
+  .pages-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+
+  .page-card {
+    border-radius: 12px;
+    border: 2px solid var(--border);
+    overflow: hidden;
+    background: white;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .page-card:hover { border-color: var(--warm); transform: translateY(-2px); box-shadow: var(--shadow); }
+  .page-card.active { border-color: var(--warm); }
+
+  .page-thumb {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+    background: #eee;
+  }
+
+  .page-label {
+    padding: 8px 10px;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .page-status {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+  }
+
+  .page-status.ok { background: var(--green); }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 16px;
+    background: var(--teal-light);
+    border-radius: 10px;
+    font-size: 13px;
+    color: var(--teal);
+    font-weight: 700;
+  }
+
+  .spinner {
+    width: 18px;
+    height: 18px;
+    border: 3px solid var(--teal);
+    border-top-color: transparent;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Alert */
+  .alert {
+    padding: 12px 16px;
+    border-radius: 10px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 12px;
+  }
+
+  .alert-success { background: var(--green-light); color: var(--green); }
+  .alert-error { background: #FFE5E5; color: #cc0000; }
+  .alert-info { background: var(--teal-light); color: var(--teal); }
+
+  /* Export */
+  .export-box {
+    background: var(--gold-light);
+    border: 2px solid var(--gold);
+    border-radius: var(--radius);
+    padding: 24px;
+    text-align: center;
+  }
+
+  .export-box .big-icon { font-size: 56px; margin-bottom: 12px; }
+
+  /* Row */
+  .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .label { font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text); }
+  .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* Page nav */
+  .page-nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .page-indicator {
+    flex: 1;
+    text-align: center;
+    font-weight: 800;
+    font-size: 15px;
+  }
+
+  .hidden { display: none !important; }
+
+  /* API key input */
+  .api-section {
+    background: var(--purple-light);
+    border: 2px solid var(--purple);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 20px;
+  }
+
+  .api-section .label { color: var(--purple); }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:28px">📚</span>
+  <h1>Albums Jeunesse</h1>
+  <span class="badge">OUTIL ENSEIGNANT</span>
+  <span style="margin-left:auto;font-size:12px;color:var(--muted)">CP · A1</span>
+</header>
+
+<div class="main">
+
+  <!-- API Key -->
+  <div class="api-section" id="apiSection">
+    <div class="label">🔑 Clé API Claude (Anthropic)</div>
+    <p style="font-size:12px;color:var(--purple);margin-bottom:10px">Nécessaire pour l'extraction automatique du texte. <a href="https://console.anthropic.com" target="_blank" style="color:var(--purple)">Obtenir une clé →</a></p>
+    <div class="row">
+      <input type="text" id="apiKey" placeholder="sk-ant-..." style="flex:1" autocomplete="off"/>
+      <button class="btn btn-purple" onclick="saveApiKey()">💾 Sauvegarder</button>
+    </div>
+    <div id="apiStatus" style="margin-top:8px;font-size:12px;color:var(--muted)"></div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps">
+    <button class="step-btn active" id="step1btn" onclick="showStep(1)">
+      <span class="step-num" style="background:var(--warm);color:white;opacity:1">1</span>
+      Mes albums
+    </button>
+    <button class="step-btn" id="step2btn" onclick="showStep(2)">
+      <span class="step-num">2</span>
+      Ajouter des pages
+    </button>
+    <button class="step-btn" id="step3btn" onclick="showStep(3)">
+      <span class="step-num">3</span>
+      Exporter
+    </button>
+  </div>
+
+  <!-- STEP 1: Book list -->
+  <div id="step1">
+    <div class="panel">
+      <div class="panel-title">📖 Mes albums</div>
+      <div class="panel-sub">Crée un album pour chaque livre à enregistrer.</div>
+
+      <div class="book-list" id="bookList"></div>
+
+      <div class="divider"></div>
+
+      <div class="label">Créer un nouvel album</div>
+      <div class="row">
+        <input type="text" id="newBookName" placeholder="Titre de l'album (ex: Le Petit Prince)" style="flex:1"/>
+        <button class="btn btn-primary" onclick="createBook()">➕ Créer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 2: Page editor -->
+  <div id="step2" class="hidden">
+    <div class="panel">
+      <div class="row" style="margin-bottom:16px">
+        <button class="btn btn-outline btn-sm" onclick="showStep(1)">← Retour</button>
+        <div class="panel-title" id="editingBookTitle" style="margin-bottom:0;flex:1">Album</div>
+        <button class="btn btn-teal btn-sm" onclick="showStep(3)">Exporter →</button>
+      </div>
+
+      <!-- Upload new page -->
+      <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+        <div class="upload-icon">📷</div>
+        <div class="upload-text">Ajouter une page</div>
+        <div class="upload-hint">Clique ou glisse une photo ici</div>
+        <input type="file" id="fileInput" accept="image/*" class="hidden" onchange="handleFileUpload(event)"/>
+      </div>
+
+      <!-- Pages grid -->
+      <div id="pagesWrap" class="hidden">
+        <div class="divider"></div>
+        <div class="label" id="pagesLabel">Pages</div>
+        <div class="pages-grid" id="pagesGrid"></div>
+      </div>
+    </div>
+
+    <!-- Page editor -->
+    <div class="panel hidden" id="pageEditorPanel">
+      <div class="page-nav">
+        <button class="btn btn-outline btn-sm" id="prevPageBtn" onclick="navigatePage(-1)">← Préc.</button>
+        <div class="page-indicator" id="pageIndicator">Page 1 / 1</div>
+        <button class="btn btn-outline btn-sm" id="nextPageBtn" onclick="navigatePage(1)">Suiv. →</button>
+      </div>
+
+      <div class="page-editor">
+        <!-- Left: image + crop -->
+        <div>
+          <div class="label">🖼️ Image — glisse pour sélectionner une illustration</div>
+          <div class="canvas-wrap" id="canvasWrap">
+            <canvas id="pageCanvas"></canvas>
+          </div>
+          <div style="margin-top:10px" class="row">
+            <button class="btn btn-teal btn-sm" id="cropBtn" onclick="cropSelection()" style="display:none">✂️ Découper la sélection</button>
+            <button class="btn btn-outline btn-sm" onclick="clearSelection()">✕ Annuler</button>
+          </div>
+          <div style="margin-top:10px">
+            <div class="label">🖼️ Illustrations découpées</div>
+            <div class="crops-list" id="cropsList"></div>
+          </div>
+        </div>
+
+        <!-- Right: text -->
+        <div>
+          <div class="row" style="margin-bottom:8px">
+            <div class="label" style="margin-bottom:0;flex:1">📝 Texte extrait</div>
+            <button class="btn btn-teal btn-sm" onclick="extractText()" id="extractBtn">✨ Extraire le texte</button>
+          </div>
+          <div id="extractStatus"></div>
+          <textarea id="pageText" placeholder="Le texte de cette page apparaîtra ici après extraction automatique. Tu peux aussi le saisir manuellement." rows="8"></textarea>
+          <div style="margin-top:10px" class="row">
+            <button class="btn btn-primary btn-sm" onclick="savePage()">💾 Sauvegarder la page</button>
+            <button class="btn btn-danger btn-sm" onclick="deletePage()">🗑️ Supprimer</button>
+          </div>
+          <div id="saveStatus" style="margin-top:8px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP 3: Export -->
+  <div id="step3" class="hidden">
+    <div class="panel">
+      <div class="panel-title">📤 Exporter les albums</div>
+      <div class="panel-sub">Génère un fichier JSON à envoyer aux élèves.</div>
+
+      <div id="exportBookList" class="book-list" style="margin-bottom:20px"></div>
+
+      <div class="export-box">
+        <div class="big-icon">📦</div>
+        <div style="font-family:'Fredoka One',cursive;font-size:22px;margin-bottom:8px">Tout est prêt !</div>
+        <p style="font-size:14px;color:var(--muted);margin-bottom:16px">Le fichier JSON contient tous les albums, textes et images. Envoie-le aux élèves via WhatsApp, email, etc.</p>
+        <button class="btn btn-primary" onclick="exportAll()">⬇️ Télécharger le fichier élèves</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let state = {
+  books: {},        // { id: { name, pages: [{id, imageData, crops:[], text}] } }
+  currentBookId: null,
+  currentPageIdx: 0,
+  apiKey: '',
+};
+
+// ── Persist ────────────────────────────────────────────────────────────────
+function save() {
+  try { localStorage.setItem('albumData', JSON.stringify(state.books)); } catch(e) {}
+}
+
+function load() {
+  try {
+    const d = localStorage.getItem('albumData');
+    if (d) state.books = JSON.parse(d);
+    const k = localStorage.getItem('claudeApiKey');
+    if (k) { state.apiKey = k; document.getElementById('apiKey').value = k; document.getElementById('apiStatus').textContent = '✅ Clé sauvegardée'; }
+  } catch(e) {}
+}
+
+function saveApiKey() {
+  const k = document.getElementById('apiKey').value.trim();
+  if (!k.startsWith('sk-ant-')) { document.getElementById('apiStatus').textContent = '❌ Format invalide'; return; }
+  state.apiKey = k;
+  localStorage.setItem('claudeApiKey', k);
+  document.getElementById('apiStatus').textContent = '✅ Clé sauvegardée !';
+}
+
+// ── Steps ──────────────────────────────────────────────────────────────────
+function showStep(n) {
+  [1,2,3].forEach(i => {
+    document.getElementById('step'+i).classList.toggle('hidden', i !== n);
+    const btn = document.getElementById('step'+i+'btn');
+    btn.classList.remove('active','done');
+    if (i === n) btn.classList.add('active');
+    else if (i < n) btn.classList.add('done');
+  });
+  if (n === 1) renderBookList();
+  if (n === 3) renderExportList();
+}
+
+// ── Books ──────────────────────────────────────────────────────────────────
+function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+function createBook() {
+  const name = document.getElementById('newBookName').value.trim();
+  if (!name) return;
+  const id = uid();
+  state.books[id] = { name, pages: [] };
+  document.getElementById('newBookName').value = '';
+  save();
+  renderBookList();
+}
+
+function renderBookList() {
+  const el = document.getElementById('bookList');
+  const ids = Object.keys(state.books);
+  if (!ids.length) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px;font-size:14px">Aucun album pour l\'instant 📚</div>';
+    return;
+  }
+  el.innerHTML = ids.map(id => {
+    const b = state.books[id];
+    const n = b.pages.length;
+    const done = b.pages.filter(p => p.text).length;
+    return `<div class="book-item" onclick="openBook('${id}')">
+      <div class="book-icon">📖</div>
+      <div class="book-meta">
+        <div class="book-name">${b.name}</div>
+        <div class="book-count">${n} page${n>1?'s':''} · ${done} avec texte</div>
+      </div>
+      <div class="book-actions">
+        <button class="btn btn-outline btn-sm" onclick="event.stopPropagation();openBook('${id}')">✏️ Éditer</button>
+        <button class="btn btn-danger btn-sm" onclick="event.stopPropagation();deleteBook('${id}')">🗑️</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteBook(id) {
+  if (!confirm('Supprimer cet album ?')) return;
+  delete state.books[id];
+  save();
+  renderBookList();
+}
+
+function openBook(id) {
+  state.currentBookId = id;
+  state.currentPageIdx = 0;
+  document.getElementById('editingBookTitle').textContent = '📖 ' + state.books[id].name;
+  showStep(2);
+  renderPagesGrid();
+  if (state.books[id].pages.length > 0) openPageEditor(0);
+  else document.getElementById('pageEditorPanel').classList.add('hidden');
+}
+
+// ── File upload ────────────────────────────────────────────────────────────
+function handleFileUpload(e) {
+  const files = Array.from(e.target.files);
+  files.forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const page = { id: uid(), imageData: ev.target.result, crops: [], text: '' };
+      state.books[state.currentBookId].pages.push(page);
+      save();
+      renderPagesGrid();
+      openPageEditor(state.books[state.currentBookId].pages.length - 1);
+    };
+    reader.readAsDataURL(file);
+  });
+  e.target.value = '';
+}
+
+// Drag & drop on upload zone
+const uploadZone = document.getElementById('uploadZone');
+uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('drag-over'));
+uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  uploadZone.classList.remove('drag-over');
+  if (!state.currentBookId) return;
+  Array.from(e.dataTransfer.files).forEach(file => {
+    if (!file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const page = { id: uid(), imageData: ev.target.result, crops: [], text: '' };
+      state.books[state.currentBookId].pages.push(page);
+      save();
+      renderPagesGrid();
+      openPageEditor(state.books[state.currentBookId].pages.length - 1);
+    };
+    reader.readAsDataURL(file);
+  });
+});
+
+// ── Pages grid ─────────────────────────────────────────────────────────────
+function renderPagesGrid() {
+  const book = state.books[state.currentBookId];
+  const wrap = document.getElementById('pagesWrap');
+  const grid = document.getElementById('pagesGrid');
+  if (!book.pages.length) { wrap.classList.add('hidden'); return; }
+  wrap.classList.remove('hidden');
+  document.getElementById('pagesLabel').textContent = `Pages (${book.pages.length})`;
+  grid.innerHTML = book.pages.map((p, i) => `
+    <div class="page-card ${i === state.currentPageIdx ? 'active' : ''}" onclick="openPageEditor(${i})">
+      <img class="page-thumb" src="${p.imageData}" alt="Page ${i+1}"/>
+      <div class="page-label">
+        <span>Page ${i+1}</span>
+        <span class="page-status ${p.text ? 'ok' : ''}"></span>
+      </div>
+    </div>
+  `).join('');
+}
+
+// ── Page editor ────────────────────────────────────────────────────────────
+let canvas, ctx, img, selection = null, isDrawing = false, startX, startY;
+
+function openPageEditor(idx) {
+  state.currentPageIdx = idx;
+  const book = state.books[state.currentBookId];
+  const page = book.pages[idx];
+  document.getElementById('pageEditorPanel').classList.remove('hidden');
+  document.getElementById('pageText').value = page.text || '';
+  document.getElementById('saveStatus').innerHTML = '';
+  document.getElementById('extractStatus').innerHTML = '';
+  renderCrops();
+  updatePageNav();
+  renderPagesGrid();
+  loadCanvasImage(page.imageData);
+}
+
+function updatePageNav() {
+  const book = state.books[state.currentBookId];
+  const n = book.pages.length;
+  document.getElementById('pageIndicator').textContent = `Page ${state.currentPageIdx+1} / ${n}`;
+  document.getElementById('prevPageBtn').disabled = state.currentPageIdx === 0;
+  document.getElementById('nextPageBtn').disabled = state.currentPageIdx === n-1;
+}
+
+function navigatePage(dir) {
+  const book = state.books[state.currentBookId];
+  const newIdx = state.currentPageIdx + dir;
+  if (newIdx < 0 || newIdx >= book.pages.length) return;
+  openPageEditor(newIdx);
+}
+
+function loadCanvasImage(src) {
+  canvas = document.getElementById('pageCanvas');
+  ctx = canvas.getContext('2d');
+  selection = null;
+  document.getElementById('cropBtn').style.display = 'none';
+  img = new Image();
+  img.onload = () => {
+    const maxW = canvas.parentElement.clientWidth || 340;
+    const scale = Math.min(1, maxW / img.width);
+    canvas.width = img.width * scale;
+    canvas.height = img.height * scale;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = src;
+
+  // Mouse events
+  canvas.onmousedown = e => { isDrawing = true; const r = canvas.getBoundingClientRect(); startX = e.clientX - r.left; startY = e.clientY - r.top; };
+  canvas.onmousemove = e => {
+    if (!isDrawing) return;
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left, y = e.clientY - r.top;
+    selection = { x: Math.min(startX,x), y: Math.min(startY,y), w: Math.abs(x-startX), h: Math.abs(y-startY) };
+    redrawCanvas();
+  };
+  canvas.onmouseup = () => {
+    isDrawing = false;
+    if (selection && selection.w > 10 && selection.h > 10) document.getElementById('cropBtn').style.display = '';
+  };
+
+  // Touch events for mobile
+  canvas.ontouchstart = e => { e.preventDefault(); const t = e.touches[0]; const r = canvas.getBoundingClientRect(); isDrawing = true; startX = t.clientX - r.left; startY = t.clientY - r.top; };
+  canvas.ontouchmove = e => { e.preventDefault(); if (!isDrawing) return; const t = e.touches[0]; const r = canvas.getBoundingClientRect(); const x = t.clientX - r.left, y = t.clientY - r.top; selection = { x: Math.min(startX,x), y: Math.min(startY,y), w: Math.abs(x-startX), h: Math.abs(y-startY) }; redrawCanvas(); };
+  canvas.ontouchend = e => { e.preventDefault(); isDrawing = false; if (selection && selection.w > 10 && selection.h > 10) document.getElementById('cropBtn').style.display = ''; };
+}
+
+function redrawCanvas() {
+  if (!canvas || !img) return;
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  if (selection) {
+    ctx.strokeStyle = '#2EC4B6';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([6,4]);
+    ctx.strokeRect(selection.x, selection.y, selection.w, selection.h);
+    ctx.fillStyle = 'rgba(46,196,182,0.15)';
+    ctx.fillRect(selection.x, selection.y, selection.w, selection.h);
+    ctx.setLineDash([]);
+  }
+}
+
+function clearSelection() { selection = null; redrawCanvas(); document.getElementById('cropBtn').style.display = 'none'; }
+
+function cropSelection() {
+  if (!selection || !img) return;
+  const scale = img.width / canvas.width;
+  const offscreen = document.createElement('canvas');
+  offscreen.width = selection.w * scale;
+  offscreen.height = selection.h * scale;
+  const octx = offscreen.getContext('2d');
+  octx.drawImage(img, selection.x * scale, selection.y * scale, selection.w * scale, selection.h * scale, 0, 0, offscreen.width, offscreen.height);
+  const dataUrl = offscreen.toDataURL('image/png');
+  const book = state.books[state.currentBookId];
+  book.pages[state.currentPageIdx].crops.push(dataUrl);
+  save();
+  renderCrops();
+  clearSelection();
+}
+
+function renderCrops() {
+  const book = state.books[state.currentBookId];
+  const crops = book.pages[state.currentPageIdx].crops || [];
+  const el = document.getElementById('cropsList');
+  el.innerHTML = crops.map((c, i) => `
+    <div class="crop-thumb">
+      <img src="${c}" alt="Illustration ${i+1}"/>
+      <div class="crop-del" onclick="deleteCrop(${i})">✕</div>
+    </div>
+  `).join('') || '<span style="font-size:12px;color:var(--muted)">Aucune illustration découpée</span>';
+}
+
+function deleteCrop(i) {
+  const book = state.books[state.currentBookId];
+  book.pages[state.currentPageIdx].crops.splice(i, 1);
+  save();
+  renderCrops();
+}
+
+// ── Text extraction ────────────────────────────────────────────────────────
+async function extractText() {
+  if (!state.apiKey) { showAlert('extractStatus', 'error', '❌ Saisis ta clé API en haut de la page.'); return; }
+  const book = state.books[state.currentBookId];
+  const page = book.pages[state.currentPageIdx];
+  const base64 = page.imageData.split(',')[1];
+  const mediaType = page.imageData.split(';')[0].split(':')[1];
+
+  document.getElementById('extractStatus').innerHTML = '<div class="loading"><div class="spinner"></div>Extraction en cours…</div>';
+  document.getElementById('extractBtn').disabled = true;
+
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': state.apiKey, 'anthropic-version': '2023-06-01' },
+      body: JSON.stringify({
+        model: 'claude-opus-4-5',
+        max_tokens: 1000,
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+            { type: 'text', text: 'Tu es un assistant pour enseignants de CP (6-7 ans, niveau A1 en français). Extrait UNIQUEMENT le texte écrit visible dans cette page de livre illustré. Retourne seulement le texte, sans explication, sans ponctuation ajoutée, tel qu\'il apparaît dans l\'image. Si il y a plusieurs phrases, sépare-les par des sauts de ligne.' }
+          ]
+        }]
+      })
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(data.error.message);
+    const text = data.content[0].text.trim();
+    document.getElementById('pageText').value = text;
+    document.getElementById('extractStatus').innerHTML = '<div class="alert alert-success">✅ Texte extrait !</div>';
+  } catch(e) {
+    document.getElementById('extractStatus').innerHTML = `<div class="alert alert-error">❌ Erreur : ${e.message}</div>`;
+  } finally {
+    document.getElementById('extractBtn').disabled = false;
+  }
+}
+
+function savePage() {
+  const book = state.books[state.currentBookId];
+  book.pages[state.currentPageIdx].text = document.getElementById('pageText').value;
+  save();
+  showAlert('saveStatus', 'success', '✅ Page sauvegardée !');
+  renderPagesGrid();
+  setTimeout(() => document.getElementById('saveStatus').innerHTML = '', 2000);
+}
+
+function deletePage() {
+  if (!confirm('Supprimer cette page ?')) return;
+  const book = state.books[state.currentBookId];
+  book.pages.splice(state.currentPageIdx, 1);
+  save();
+  renderPagesGrid();
+  if (book.pages.length === 0) {
+    document.getElementById('pageEditorPanel').classList.add('hidden');
+  } else {
+    openPageEditor(Math.min(state.currentPageIdx, book.pages.length - 1));
+  }
+}
+
+// ── Export ─────────────────────────────────────────────────────────────────
+function renderExportList() {
+  const el = document.getElementById('exportBookList');
+  const ids = Object.keys(state.books);
+  if (!ids.length) { el.innerHTML = '<div style="color:var(--muted);text-align:center;padding:16px">Aucun album à exporter</div>'; return; }
+  el.innerHTML = ids.map(id => {
+    const b = state.books[id];
+    const n = b.pages.length;
+    const done = b.pages.filter(p => p.text).length;
+    return `<div class="book-item">
+      <div class="book-icon">📖</div>
+      <div class="book-meta">
+        <div class="book-name">${b.name}</div>
+        <div class="book-count">${n} page${n>1?'s':''} · ${done} avec texte · ${b.pages.reduce((a,p)=>a+p.crops.length,0)} illustrations</div>
+      </div>
+      <span style="font-size:20px">${done === n && n > 0 ? '✅' : '⚠️'}</span>
+    </div>`;
+  }).join('');
+}
+
+function exportAll() {
+  const data = JSON.stringify(state.books, null, 2);
+  const blob = new Blob([data], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'albums_eleves_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+// ── Helpers ────────────────────────────────────────────────────────────────
+function showAlert(containerId, type, msg) {
+  document.getElementById(containerId).innerHTML = `<div class="alert alert-${type}">${msg}</div>`;
+}
+
+// ── Init ───────────────────────────────────────────────────────────────────
+load();
+renderBookList();
+</script>
+</body>
+</html>
