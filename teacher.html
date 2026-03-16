@@ -689,14 +689,13 @@ function renderExportInfo(){
 }
 
 function exportAll(){
-  // Convert books to student format: segments instead of pages
-  const exportData={};
+  const exportData={ _apiKey: state.apiKey };
   Object.entries(state.books).forEach(([id,book])=>{
     exportData[id]={
       name:book.name,
       pages:book.segments.map(seg=>({
         id:seg.id,
-        imageData:seg.photos[0]?.imageData||'',
+        imageData:'',
         crops:seg.crops,
         text:seg.text
       }))

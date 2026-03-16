@@ -522,7 +522,14 @@ function loadJSON(e) {
   const reader = new FileReader();
   reader.onload = ev => {
     try {
-      books = JSON.parse(ev.target.result);
+      const data = JSON.parse(ev.target.result);
+      // Extract API key if present
+      if (data._apiKey) {
+        apiKey = data._apiKey;
+        localStorage.setItem(CLAUDE_API_KEY_STORAGE, apiKey);
+        delete data._apiKey;
+      }
+      books = data;
       showScreen('bookSelectScreen');
       renderBooks();
     } catch(err) {
@@ -671,10 +678,28 @@ IMPORTANT : chaque mot de la phrase = un objet dans words, dans le même ordre.`
 }
 
 function makeFallbackSentence(text) {
-  // Take first sentence, split into words, tag as 'autre'
-  const sentence = text.split(/[.!?]/)[0].trim();
-  const words = sentence.split(/\s+/).filter(Boolean).map(w => ({ text: w, pos: 'autre' }));
-  return { sentence, words };
+  // Pick shortest sentence between 4-8 words
+  const sentences = text.split(/[.!?\n]/).map(s => s.trim()).filter(Boolean);
+  let best = sentences[0] || text;
+  for (const s of sentences) {
+    const wc = s.split(/\s+/).filter(Boolean).length;
+    if (wc >= 4 && wc <= 8) { best = s; break; }
+  }
+  const allWords = best.split(/\s+/).filter(Boolean).slice(0, 8);
+  // Simple French POS guessing for fallback
+  const detectors = [
+    { pos: 'det',   test: w => /^(le|la|les|un|une|des|mon|ma|mes|ton|ta|tes|son|sa|ses|notre|votre|leur|leurs|ce|cet|cette|ces|du|au|aux)$/i.test(w) },
+    { pos: 'verbe', test: w => /^(est|sont|a|ont|fait|font|va|vont|dit|voit|mange|court|joue|aime|prend|donne|met|vient|veut|peut|sait|doit|arrive|part|reste|tombe|rit|pleure|crie|chante|saute|marche|regarde|écoute|parle|répond)$/i.test(w) },
+    { pos: 'adj',   test: w => /^(petit|petite|grand|grande|gros|grosse|beau|belle|bon|bonne|mauvais|vieux|vieille|nouveau|jeune|long|rouge|bleu|vert|jaune|blanc|noir|gris|joli|jolie|content|triste|heureux|heureuse)$/i.test(w) },
+  ];
+  const words = allWords.map(w => {
+    const clean = w.replace(/[«»""',;:!?]/g, '');
+    let pos = 'autre';
+    for (const d of detectors) { if (d.test(clean)) { pos = d.pos; break; } }
+    if (pos === 'autre' && clean.length > 3 && !clean.endsWith('ment')) pos = 'nom';
+    return { text: w, pos };
+  });
+  return { sentence: allWords.join(' '), words };
 }
 
 // ── Load game page ─────────────────────────────────────────────────────────
