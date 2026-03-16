@@ -617,11 +617,12 @@ ${text}
 
 Ta mission : choisir OU composer UNE phrase pour cet exercice de remise en ordre.
 Règles STRICTES - RESPECTE-LES ABSOLUMENT :
-- ENTRE 6 ET 8 MOTS exactement (compte chaque mot : "Le" = 1 mot, "petit" = 1 mot, etc.)
-- La phrase DOIT avoir : un SUJET (qui?) + un VERBE conjugué + un COMPLÉMENT (quoi? où?)
-- Exemple valide (7 mots) : "Le petit chat mange une grosse carotte"
-- Exemple valide (6 mots) : "La fille court dans le jardin"
-- Exemple invalide (9 mots) : trop long, recommence
+- ENTRE 6 ET 8 MOTS exactement — compte les mots un par un avant de répondre
+- La phrase DOIT avoir : SUJET + VERBE conjugué + COMPLÉMENT
+- Exemple 6 mots ✅ : "La fille court dans le jardin" → [La][fille][court][dans][le][jardin] = 6
+- Exemple 7 mots ✅ : "Le petit chat mange une pomme rouge" → 7 mots
+- Exemple 8 mots ✅ : "Le garçon donne un livre à sa mère" → 8 mots
+- Si ta phrase dépasse 8 mots : RECOMMENCE avec une phrase plus courte
 - Vocabulaire simple niveau CP, mots concrets et courants
 - Tu peux t'inspirer du texte ou composer librement
 
@@ -659,7 +660,14 @@ IMPORTANT : chaque mot de la phrase = un objet dans words, dans le même ordre.`
   const data = await res.json();
   if (data.error) throw new Error(data.error.message);
   const raw = data.content[0].text.trim().replace(/```json|```/g, '').trim();
-  return JSON.parse(raw);
+  const parsed = JSON.parse(raw);
+  if (parsed.words) {
+    parsed.words = parsed.words.map(w => ({
+      text: (w.text || '').trim(),
+      pos: (w.pos || 'autre').toLowerCase().trim()
+    }));
+  }
+  return parsed;
 }
 
 function makeFallbackSentence(text) {
@@ -756,7 +764,8 @@ const POS_COLORS = {
 };
 
 function makeCardHTML(w, zone, idx) {
-  const c = POS_COLORS[w.pos] || POS_COLORS.autre;
+  const pos = (w.pos || '').toLowerCase().trim();
+  const c = POS_COLORS[pos] || POS_COLORS.autre;
   return `<div class="word-card" data-pos="${w.pos}" data-zone="${zone}" data-idx="${idx}"
     style="background:${c.bg};color:${c.color};padding:10px 18px;border-radius:40px;font-weight:800;font-size:17px;cursor:pointer;user-select:none;display:inline-flex;align-items:center;box-shadow:0 4px 10px rgba(0,0,0,0.25);border:none;font-family:Nunito,sans-serif;transition:transform 0.1s;-webkit-tap-highlight-color:transparent;"
     onclick="handleCardTap(this)">${w.text}</div>`;
