@@ -617,34 +617,34 @@ async function extractSentence(text) {
   if (!apiKey) return makeFallbackSentence(text);
 
   const prompt = `Tu es un assistant pédagogique pour CP (6-7 ans, niveau A1 en français).
-Voici TOUT le texte d'une page d'album illustré :
+Voici le texte d'une page d'album illustré :
 """
 ${text}
 """
 
-Ta mission : composer UNE phrase qui résume bien le contenu de cette page.
-Règles OBLIGATOIRES :
-- La phrase doit contenir AU MOINS : 1 déterminant + 1 nom + 1 verbe conjugué + 1 adjectif
-- Maximum 10 mots, minimum 5 mots
-- Vocabulaire simple niveau CP (mots fréquents, concrets)
-- La phrase peut être tirée directement du texte ou librement inspirée de son contenu
+Ta mission : choisir OU composer UNE phrase simple pour cet exercice de remise en ordre.
+Règles STRICTES :
+- MAXIMUM 8 mots (compte bien chaque mot séparément)
+- MINIMUM 4 mots
+- La phrase doit contenir : au moins 1 verbe conjugué + 1 nom
+- Vocabulaire courant niveau CP
+- Tu peux prendre une phrase directement dans le texte si elle respecte la limite, ou en composer une courte inspirée du texte
+- Pas d'obligation de tout résumer, l'essentiel est que la phrase soit claire et jouable
 
 Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication, sans texte avant ou après :
 {
-  "sentence": "La phrase complète ici",
+  "sentence": "La phrase ici",
   "words": [
     {"text": "Le", "pos": "det"},
-    {"text": "petit", "pos": "adj"},
     {"text": "lapin", "pos": "nom"},
-    {"text": "mange", "pos": "verbe"},
-    {"text": "une", "pos": "det"},
-    {"text": "grosse", "pos": "adj"},
-    {"text": "carotte", "pos": "nom"}
+    {"text": "saute", "pos": "verbe"},
+    {"text": "très", "pos": "autre"},
+    {"text": "haut", "pos": "adj"}
   ]
 }
 
 Valeurs possibles pour pos : "nom", "verbe", "adj", "det", "autre"
-Chaque mot de la phrase doit apparaître dans le tableau words dans le même ordre.`;
+Chaque mot séparé par une espace = un élément dans words, dans le même ordre que la phrase.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
