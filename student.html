@@ -611,30 +611,44 @@ async function prepareGameSentences() {
 async function extractSentence(text) {
   if (!apiKey) return makeFallbackSentence(text);
 
-  const prompt = `Tu es un assistant pédagogique pour CP (6-7 ans, A1 français). 
-Voici le texte d'une page d'album illustré : "${text}"
+  const prompt = `Tu es un assistant pédagogique pour CP (6-7 ans, niveau A1 en français).
+Voici TOUT le texte d'une page d'album illustré :
+"""
+${text}
+"""
 
-Choisis UNE phrase courte et claire (max 8 mots) adaptée à des élèves de CP.
-Préfère les phrases avec des mots courants, un verbe d'action, et un nom concret.
+Ta mission : composer UNE phrase qui résume bien le contenu de cette page.
+Règles OBLIGATOIRES :
+- La phrase doit contenir AU MOINS : 1 déterminant + 1 nom + 1 verbe conjugué + 1 adjectif
+- Maximum 10 mots, minimum 5 mots
+- Vocabulaire simple niveau CP (mots fréquents, concrets)
+- La phrase peut être tirée directement du texte ou librement inspirée de son contenu
 
-Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication :
+Réponds UNIQUEMENT en JSON valide, sans markdown, sans explication, sans texte avant ou après :
 {
-  "sentence": "La phrase choisie",
+  "sentence": "La phrase complète ici",
   "words": [
-    {"text": "La", "pos": "det"},
-    {"text": "petite", "pos": "adj"},
-    {"text": "fille", "pos": "nom"},
+    {"text": "Le", "pos": "det"},
+    {"text": "petit", "pos": "adj"},
+    {"text": "lapin", "pos": "nom"},
     {"text": "mange", "pos": "verbe"},
     {"text": "une", "pos": "det"},
-    {"text": "pomme", "pos": "nom"}
+    {"text": "grosse", "pos": "adj"},
+    {"text": "carotte", "pos": "nom"}
   ]
 }
 
-Catégories pos : nom, verbe, adj, det, autre`;
+Valeurs possibles pour pos : "nom", "verbe", "adj", "det", "autre"
+Chaque mot de la phrase doit apparaître dans le tableau words dans le même ordre.`;
 
   const res = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey, 'anthropic-version': '2023-06-01' },
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 400,
