@@ -558,7 +558,7 @@ async function extractFromActive(segIdx){
         max_tokens:1000,
         messages:[{role:'user',content:[
           {type:'image',source:{type:'base64',media_type:mediaType,data:base64}},
-          {type:'text',text:'Tu es un assistant pour enseignants de CP (6-7 ans). Extrait UNIQUEMENT le texte écrit visible dans cette page de livre illustré. Retourne seulement le texte brut, sans explication, sans ponctuation ajoutée, tel qu'il apparaît. Sépare les phrases par des sauts de ligne.'}
+          {type:'text',text:"Tu es un assistant pour enseignants de CP (6-7 ans). Extrait UNIQUEMENT le texte écrit visible dans cette page de livre illustré. Retourne seulement le texte brut, sans explication, sans ponctuation ajoutée, tel qu'il apparaît. Sépare les phrases par des sauts de ligne."}
         ]}]
       })
     });
@@ -568,8 +568,7 @@ async function extractFromActive(segIdx){
     // Append to existing text
     const ta=document.getElementById('textArea'+segIdx);
     const existing=ta.value.trim();
-    ta.value=existing?(existing+'
-'+extracted):extracted;
+    ta.value=existing?(existing+'\n'+extracted):extracted;
     book.segments[segIdx].text=ta.value;
     save();
     document.getElementById('extractStatus'+segIdx).innerHTML='<div class="alert alert-success">✅ Texte ajouté !</div>';
