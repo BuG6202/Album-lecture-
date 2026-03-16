@@ -189,18 +189,55 @@ let selection = null, isDrawing = false, startX, startY;
 let activeSegIdx = null, activePhotoIdx = null;
 
 // ── Persist ────────────────────────────────────────────────────────────────
-function save() {
+// photoMemory[bookId_segIdx_photoIdx] = imageData (never saved to localStorage)
+let photoMemory = {};
+
+function memKey(bookId, segIdx, photoIdx) {
+  return bookId + '_' + segIdx + '_' + photoIdx;
+}
+
+function saveToStorage() {
+  // Save only text and crops (no imageData)
   try {
-    localStorage.setItem('albumData2', JSON.stringify(state.books));
+    const slim = {};
+    Object.entries(state.books).forEach(([id, book]) => {
+      slim[id] = {
+        name: book.name,
+        segments: book.segments.map(seg => ({
+          id: seg.id,
+          text: seg.text,
+          crops: seg.crops,
+          photoCount: seg.photos.length  // remember how many photos were added
+        }))
+      };
+    });
+    localStorage.setItem('albumData2', JSON.stringify(slim));
     showAutoSave();
   } catch(e) {
-    alert('⚠️ Stockage plein ! Exporte tes albums maintenant pour ne pas perdre tes données.');
+    alert('⚠️ Stockage plein ! Exporte tes albums maintenant.');
   }
 }
+
+function save() { saveToStorage(); }
+
 function load() {
   try {
     const d = localStorage.getItem('albumData2');
-    if (d) state.books = JSON.parse(d);
+    if (d) {
+      const slim = JSON.parse(d);
+      // Restore books with empty photos arrays (imageData lives in memory only)
+      Object.entries(slim).forEach(([id, book]) => {
+        state.books[id] = {
+          name: book.name,
+          segments: book.segments.map(seg => ({
+            id: seg.id,
+            text: seg.text,
+            crops: seg.crops || [],
+            photos: []  // empty - user must re-upload if needed
+          }))
+        };
+      });
+    }
     const k = localStorage.getItem('claudeApiKey');
     if (k) { state.apiKey=k; document.getElementById('apiStatus').textContent='✅ Clé enregistrée ! (' + k.slice(0,12) + '…)'; }
   } catch(e){}
@@ -327,12 +364,17 @@ function renderSegBody(seg, segIdx){
     ? seg.crops.map((c,ci)=>`<div class="crop-thumb"><img src="${c}"/><div class="crop-del" onclick="deleteCrop(${segIdx},${ci})">✕</div></div>`).join('')
     : '<span style="font-size:12px;color:var(--muted)">Aucune illustration découpée</span>';
 
-  const photoStripHTML = seg.photos.map((p,pi)=>`
-    <div class="photo-thumb ${activeSegIdx===segIdx&&activePhotoIdx===pi?'active-photo':''}" onclick="selectPhoto(${segIdx},${pi})">
-      <img src="${p.imageData}"/>
+  const photoStripHTML = seg.photos.map((p,pi)=>{
+    const imgData = photoMemory[memKey(state.currentBookId, segIdx, pi)];
+    const isActive = activeSegIdx===segIdx&&activePhotoIdx===pi;
+    return `<div class="photo-thumb ${isActive?'active-photo':''}" onclick="selectPhoto(${segIdx},${pi})">
+      ${imgData
+        ? `<img src="${imgData}"/>`
+        : `<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;background:#f0f0f0;font-size:10px;color:#aaa;text-align:center;padding:4px">Recharge<br>la photo</div>`
+      }
       <div class="photo-del" onclick="event.stopPropagation();deletePhoto(${segIdx},${pi})">✕</div>
-    </div>
-  `).join('');
+    </div>`;
+  }).join('');
 
   return `
     <div class="two-col">
@@ -396,13 +438,14 @@ function addPhotos(e, segIdx){
     const reader=new FileReader();
     reader.onload=ev=>{
       const book=state.books[state.currentBookId];
-      book.segments[segIdx].photos.push({id:uid(), imageData:ev.target.result});
-      save();
-      // Re-render just this segment body
+      const photoId=uid();
+      // Store imageData in memory only, not in book
+      const photoIdx=book.segments[segIdx].photos.length;
+      book.segments[segIdx].photos.push({id:photoId});
+      photoMemory[memKey(state.currentBookId, segIdx, photoIdx)] = ev.target.result;
+      save(); // saves without imageData - no storage overflow
       refreshSegBody(segIdx);
-      // Auto-select newly added photo
-      const newIdx=book.segments[segIdx].photos.length-1;
-      selectPhoto(segIdx, newIdx);
+      selectPhoto(segIdx, book.segments[segIdx].photos.length-1);
     };
     reader.readAsDataURL(file);
   });
@@ -411,6 +454,15 @@ function addPhotos(e, segIdx){
 
 function deletePhoto(segIdx, photoIdx){
   const book=state.books[state.currentBookId];
+  const bookId=state.currentBookId;
+  // Shift memory keys after this index
+  const total=book.segments[segIdx].photos.length;
+  delete photoMemory[memKey(bookId, segIdx, photoIdx)];
+  for(let i=photoIdx+1;i<total;i++){
+    const old=photoMemory[memKey(bookId, segIdx, i)];
+    if(old) photoMemory[memKey(bookId, segIdx, i-1)]=old;
+    delete photoMemory[memKey(bookId, segIdx, i)];
+  }
   book.segments[segIdx].photos.splice(photoIdx,1);
   if(activeSegIdx===segIdx&&activePhotoIdx===photoIdx){ activeSegIdx=null; activePhotoIdx=null; }
   save(); refreshSegBody(segIdx);
@@ -418,13 +470,29 @@ function deletePhoto(segIdx, photoIdx){
 
 function selectPhoto(segIdx, photoIdx){
   activeSegIdx=segIdx; activePhotoIdx=photoIdx;
-  const book=state.books[state.currentBookId];
-  const photo=book.segments[segIdx].photos[photoIdx];
   // Update active highlight in strip
-  document.querySelectorAll(`#photoStrip${segIdx} .photo-thumb`).forEach((t,i)=>{
+  document.querySelectorAll('#photoStrip'+segIdx+' .photo-thumb').forEach((t,i)=>{
     t.classList.toggle('active-photo', i===photoIdx);
   });
-  loadCanvas(segIdx, photo.imageData);
+  // Get imageData from memory
+  const imageData = photoMemory[memKey(state.currentBookId, segIdx, photoIdx)];
+  if (imageData) {
+    loadCanvas(segIdx, imageData);
+  } else {
+    // Photo not in memory (page was refreshed) - show message
+    const canvas=document.getElementById('canvas'+segIdx);
+    if (canvas) {
+      const ctx=canvas.getContext('2d');
+      canvas.width=300; canvas.height=80;
+      ctx.fillStyle='#f0f0f0';
+      ctx.fillRect(0,0,300,80);
+      ctx.fillStyle='#888';
+      ctx.font='13px Nunito, sans-serif';
+      ctx.textAlign='center';
+      ctx.fillText('Photo perdue après rechargement.', 150, 35);
+      ctx.fillText('Supprime et recharge la photo.', 150, 55);
+    }
+  }
 }
 
 function refreshSegBody(segIdx){
@@ -536,13 +604,17 @@ async function extractFromActive(segIdx){
   }
   if(!state.apiKey){ document.getElementById('extractStatus'+segIdx).innerHTML='<div class="alert alert-error">❌ Saisis ta clé API en haut.</div>'; return; }
   const book=state.books[state.currentBookId];
-  const photo=book.segments[segIdx].photos[activePhotoIdx];
+  const imageData = photoMemory[memKey(state.currentBookId, segIdx, activePhotoIdx)];
+  if (!imageData) {
+    document.getElementById('extractStatus'+segIdx).innerHTML='<div class="alert alert-error">❌ Photo non disponible. Supprime et recharge la photo.</div>';
+    return;
+  }
 
   document.getElementById('extractStatus'+segIdx).innerHTML='<div class="loading"><div class="spinner"></div>Extraction en cours…</div>';
 
-  let base64=photo.imageData.split(',')[1];
+  let base64=imageData.split(',')[1];
   let mediaType='image/jpeg';
-  try{ const c=await compressImage(photo.imageData,1200); base64=c.split(',')[1]; }catch(e){}
+  try{ const c=await compressImage(imageData,1200); base64=c.split(',')[1]; }catch(e){}
 
   try{
     const res=await fetch('https://api.anthropic.com/v1/messages',{
