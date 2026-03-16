@@ -111,12 +111,15 @@
   <!-- API Key -->
   <div class="api-section">
     <div class="label" style="color:var(--purple)">🔑 Clé API Claude</div>
-    <p style="font-size:12px;color:var(--purple);margin-bottom:10px">Nécessaire pour l'extraction automatique. <a href="https://console.anthropic.com" target="_blank" style="color:var(--purple)">Obtenir →</a></p>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
-      <input type="text" id="apiKey" placeholder="sk-ant-api03-..." style="flex:1;min-width:200px;padding:12px 16px;border-radius:12px;border:2px solid #c9b8e8;font-family:monospace;font-size:13px;outline:none;" spellcheck="false" autocorrect="off" autocapitalize="off"/>
-      <button style="padding:10px 20px;border-radius:40px;border:none;background:#7B5EA7;color:white;font-family:Nunito,sans-serif;font-weight:700;font-size:14px;cursor:pointer;-webkit-appearance:none;" id="saveApiKeyBtn" type="button">💾 Sauvegarder</button>
+    <div id="apiStatus" style="font-size:13px;color:var(--purple);margin-bottom:12px">
+      ⬜ Pas de clé enregistrée
     </div>
-    <div id="apiStatus" style="margin-top:8px;font-size:12px;color:#888"></div>
+    <button onclick="enterApiKey()" style="padding:12px 24px;border-radius:40px;border:none;background:#7B5EA7;color:white;font-family:Nunito,sans-serif;font-weight:700;font-size:14px;cursor:pointer;">
+      🔑 Saisir ma clé API
+    </button>
+    <p style="font-size:11px;color:var(--purple);margin-top:8px">
+      <a href="https://console.anthropic.com" target="_blank" style="color:var(--purple)">Obtenir une clé →</a>
+    </p>
   </div>
 
   <!-- Steps -->
@@ -199,14 +202,17 @@ function load() {
     const d = localStorage.getItem('albumData2');
     if (d) state.books = JSON.parse(d);
     const k = localStorage.getItem('claudeApiKey');
-    if (k) { state.apiKey=k; document.getElementById('apiKey').value=k; document.getElementById('apiStatus').textContent='✅ Clé chargée'; }
+    if (k) { state.apiKey=k; document.getElementById('apiStatus').textContent='✅ Clé enregistrée ! (' + k.slice(0,12) + '…)'; }
   } catch(e){}
 }
-function saveApiKey() {
-  const k = document.getElementById('apiKey').value.trim();
-  if (!k || k.length < 20) { document.getElementById('apiStatus').textContent='❌ Clé trop courte'; return; }
-  state.apiKey=k; localStorage.setItem('claudeApiKey',k);
-  document.getElementById('apiStatus').textContent='✅ Sauvegardée !';
+function enterApiKey() {
+  const k = prompt('Colle ta clé API Claude ici (commence par sk-ant-)');
+  if (!k) return;
+  const key = k.trim();
+  if (key.length < 20) { alert('Clé invalide, réessaie.'); return; }
+  state.apiKey = key;
+  localStorage.setItem('claudeApiKey', key);
+  document.getElementById('apiStatus').textContent = '✅ Clé enregistrée ! (' + key.slice(0,12) + '…)';
 }
 let saveTimer;
 function showAutoSave() {
@@ -613,22 +619,7 @@ function exportAll(){
 // ── Init ───────────────────────────────────────────────────────────────────
 load(); renderBookList();
 
-// Bind save button - multiple approaches for iOS Safari compatibility
-function bindSaveBtn() {
-  var btn = document.getElementById('saveApiKeyBtn');
-  if (!btn) return;
-  btn.onclick = null;
-  btn.addEventListener('touchend', function(e) {
-    e.preventDefault();
-    saveApiKey();
-  });
-  btn.addEventListener('click', function(e) {
-    e.preventDefault();
-    saveApiKey();
-  });
-}
-bindSaveBtn();
-document.addEventListener('DOMContentLoaded', bindSaveBtn);
+
 </script>
 </body>
 </html>
