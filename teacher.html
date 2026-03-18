@@ -689,7 +689,7 @@ function renderExportInfo(){
 }
 
 function exportAll(){
-  const exportData={ _apiKey: state.apiKey };
+  const exportData={};
   Object.entries(state.books).forEach(([id,book])=>{
     exportData[id]={
       name:book.name,
